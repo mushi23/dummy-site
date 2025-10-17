@@ -5,16 +5,112 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dummy GA4 Test Site</title>
 <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-E88B4B5CV9"></script>
+<script async src="https://ourplatform.com/tracker.js?id=USER_ID"></script>
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-E88B4B5CV9');
+  /* === CONFIG === */
+  const COLLECTOR_BASE = "https://fbb2a601e44f.ngrok-free.app"; // your active collector
+  const TENANT_ID = "demo";
+
+  // optional initialization hook (for analytics consistency)
+  window.OurTrack?.('init', { site: location.origin });
+
+  /* === HELPERS === */
+  function getSessionId() {
+    const key = "_our_sid";
+    let v = sessionStorage.getItem(key);
+    if (!v) {
+      v = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      sessionStorage.setItem(key, v);
+    }
+    return v;
+  }
+
+  function getParams() {
+    const sp = new URLSearchParams(location.search);
+    const get = (k) => sp.get(k) || undefined;
+    return {
+      utm: {
+        source: get("utm_source"),
+        medium: get("utm_medium"),
+        campaign: get("utm_campaign"),
+        term: get("utm_term"),
+        content: get("utm_content"),
+      },
+      clid: {
+        gclid: get("gclid"),
+        fbclid: get("fbclid"),
+        ttclid: get("ttclid"),
+      },
+    };
+  }
+
+  function sendEvent(type, extra = {}) {
+    const payload = {
+      t: type,
+      tenantId: TENANT_ID,
+      url: location.href,
+      ref: document.referrer || null,
+      sid: getSessionId(),
+      ...getParams(),
+      ...extra,
+    };
+    const body = JSON.stringify(payload);
+
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(
+        `${COLLECTOR_BASE}/collect`,
+        new Blob([body], { type: "application/json" })
+      );
+    } else {
+      fetch(`${COLLECTOR_BASE}/collect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        keepalive: true,
+      }).catch(() => {});
+    }
+  }
+
+  /* === 1) PAGEVIEW === */
+  sendEvent("pageview");
+
+  /* === 2) ENGAGEMENT & BOUNCE === */
+  (function () {
+    let engaged = false;
+
+    function markEngaged() {
+      if (engaged) return;
+      engaged = true;
+      sendEvent("engaged");
+    }
+
+    function markBounce() {
+      if (engaged) return;
+      sendEvent("bounce");
+    }
+
+    // Send "engaged" if user stays 30s
+    setTimeout(markEngaged, 30_000);
+
+    // Send "engaged" if user scrolls 75% down
+    window.addEventListener(
+      "scroll",
+      () => {
+        const scrolled =
+          (window.scrollY + window.innerHeight) /
+          (document.documentElement.scrollHeight || 1);
+        if (scrolled >= 0.75) markEngaged();
+      },
+      { passive: true }
+    );
+
+    // Send "bounce" if user leaves without engaging
+    window.addEventListener("beforeunload", markBounce);
+  })();
 </script>
 </head>
 <body>
-  <h1>Hello, this is my GA4 test siteeeee 🚀</h1>
+  <h1>Hello, this is my GA4 test siteeeee Mamuch Man U 3 - Liverpool 0 🚀</h1>
   <p>If you see this, GA4 should start tracking visits.</p>
 </body>
 </html>
