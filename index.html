@@ -8,7 +8,7 @@
 <script async src="https://ourplatform.com/tracker.js?id=USER_ID"></script>
 <script>
   /* === CONFIG === */
-  const COLLECTOR_BASE = "https://836106437071.ngrok-free.app"; // your active collector
+  const COLLECTOR_BASE = window.location.origin; // stable proxy through your app
   const TENANT_ID = "demo";
 
   // optional initialization hook (for analytics consistency)
@@ -58,11 +58,11 @@
 
     if (navigator.sendBeacon) {
       navigator.sendBeacon(
-        `${COLLECTOR_BASE}/collect`,
+        `${COLLECTOR_BASE}/api/collect`,
         new Blob([body], { type: "application/json" })
       );
     } else {
-      fetch(`${COLLECTOR_BASE}/collect`, {
+      fetch(`${COLLECTOR_BASE}/api/collect`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body,
