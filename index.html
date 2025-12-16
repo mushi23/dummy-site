@@ -5,107 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dummy GA4 Test Site</title>
 <!-- Google tag (gtag.js) -->
-<script async src="https://ourplatform.com/tracker.js?id=USER_ID"></script>
+<script async src="https://ourplatform.com/tracker.js?id=hvHFv64mN10x0FbPG5DBxQXwdFjhlvW3"></script>
 <script>
-  /* === CONFIG === */
-  const COLLECTOR_BASE = "https://db4192424692.ngrok-free.app"; // current ngrok URL
-  const TENANT_ID = "demo";
+  /* === CONFIG (generated) === */
+  const COLLECTOR_BASE = "https://dmwithai.selftrainai.com/api/collector";
+  const TENANT_ID = "2";
+  const SITE_TOKEN = "hvHFv64mN10x0FbPG5DBxQXwdFjhlvW3";
 
-  // optional initialization hook (for analytics consistency)
-  window.OurTrack?.('init', { site: location.origin });
-
-  /* === HELPERS === */
-  function getSessionId() {
-    const key = "_our_sid";
-    let v = sessionStorage.getItem(key);
-    if (!v) {
-      v = Math.random().toString(36).slice(2) + Date.now().toString(36);
-      sessionStorage.setItem(key, v);
-    }
+  function sid() {
+    const k = "_our_sid"; let v = sessionStorage.getItem(k);
+    if (!v) { v = Math.random().toString(36).slice(2)+Date.now().toString(36); sessionStorage.setItem(k, v); }
     return v;
   }
-
   function getParams() {
     const sp = new URLSearchParams(location.search);
-    const get = (k) => sp.get(k) || undefined;
-    return {
-      utm: {
-        source: get("utm_source"),
-        medium: get("utm_medium"),
-        campaign: get("utm_campaign"),
-        term: get("utm_term"),
-        content: get("utm_content"),
-      },
-      clid: {
-        gclid: get("gclid"),
-        fbclid: get("fbclid"),
-        ttclid: get("ttclid"),
-      },
-    };
+    const g = k => sp.get(k) || undefined;
+    return { utm: { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') },
+              clid: { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') } };
   }
-
   function sendEvent(type, extra = {}) {
-    const payload = {
-      t: type,
-      tenantId: TENANT_ID,
-      url: location.href,
-      ref: document.referrer || null,
-      sid: getSessionId(),
-      ...getParams(),
-      ...extra,
-    };
+    const payload = { t:type, tenantId:TENANT_ID, siteToken:SITE_TOKEN, url:location.href, ref:document.referrer||null, sid:sid(), ...getParams(), ...extra };
     const body = JSON.stringify(payload);
-
     if (navigator.sendBeacon) {
-      navigator.sendBeacon(
-        `${COLLECTOR_BASE}/collect`,
-        new Blob([body], { type: "application/json" })
-      );
-    } else {
-      fetch(`${COLLECTOR_BASE}/collect`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-        body,
-        keepalive: true,
-      }).catch(() => {});
+      navigator.sendBeacon(`${COLLECTOR_BASE}/collect`, new Blob([body], { type: 'text/plain;charset=UTF-8' }));
+      return;
     }
+    fetch(`${COLLECTOR_BASE}/collect`, {
+      method:'POST',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body,
+      keepalive:true
+    }).catch(()=>{});
   }
-
-  /* === 1) PAGEVIEW === */
-  sendEvent("pageview");
-
-  /* === 2) ENGAGEMENT & BOUNCE === */
-  (function () {
-    let engaged = false;
-
-    function markEngaged() {
-      if (engaged) return;
-      engaged = true;
-      sendEvent("engaged");
-    }
-
-    function markBounce() {
-      if (engaged) return;
-      sendEvent("bounce");
-    }
-
-    // Send "engaged" if user stays 30s
+  sendEvent('pageview');
+  (function(){
+    let engaged=false;
+    const markEngaged=()=>{ if(engaged) return; engaged=true; sendEvent('engaged'); };
+    const markBounce =()=>{ if(engaged) return; sendEvent('bounce'); };
     setTimeout(markEngaged, 30_000);
-
-    // Send "engaged" if user scrolls 75% down
-    window.addEventListener(
-      "scroll",
-      () => {
-        const scrolled =
-          (window.scrollY + window.innerHeight) /
-          (document.documentElement.scrollHeight || 1);
-        if (scrolled >= 0.75) markEngaged();
-      },
-      { passive: true }
-    );
-
-    // Send "bounce" if user leaves without engaging
-    window.addEventListener("beforeunload", markBounce);
+    window.addEventListener('scroll', ()=>{ const s=(window.scrollY+window.innerHeight)/(document.documentElement.scrollHeight||1); if(s>=0.75) markEngaged(); }, { passive:true });
+    window.addEventListener('beforeunload', markBounce);
   })();
 </script>
 </head>
