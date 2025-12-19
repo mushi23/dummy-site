@@ -181,11 +181,14 @@
       <h2>Test Different Traffic Sources</h2>
       <p>Click these links to simulate different acquisition channels:</p>
       <div class="traffic-links">
-        <a href="index.html?utm_source=google&utm_medium=organic&utm_campaign=seo" class="traffic-link organic">Organic Search</a>
-        <a href="index.html?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale" class="traffic-link paid">Paid Search (CPC)</a>
-        <a href="index.html?utm_source=facebook&utm_medium=social&utm_campaign=brand_awareness" class="traffic-link social">Social Media</a>
-        <a href="index.html" class="traffic-link direct">Direct Traffic</a>
+        <a href="index.html?utm_source=google&utm_medium=organic&utm_campaign=seo" class="traffic-link organic" onclick="console.log('🔍 Clicked Organic link'); return true;">Organic Search</a>
+        <a href="index.html?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale" class="traffic-link paid" onclick="console.log('🔍 Clicked Paid link'); return true;">Paid Search (CPC)</a>
+        <a href="index.html?utm_source=facebook&utm_medium=social&utm_campaign=brand_awareness" class="traffic-link social" onclick="console.log('🔍 Clicked Social link'); return true;">Social Media</a>
+        <a href="index.html" class="traffic-link direct" onclick="console.log('🔍 Clicked Direct link'); return true;">Direct Traffic</a>
       </div>
+      <p style="margin-top: 15px; font-size: 14px; color: #666;">
+        <strong>⚠️ Important:</strong> Click one of the links above to test UTM tracking. The UTM parameters will be saved and persist across page navigations.
+      </p>
       <div id="utm-status" style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 5px; font-family: monospace; font-size: 12px;">
         <strong>Current UTM Status:</strong> <span id="utm-display">Loading...</span>
       </div>
