@@ -20,11 +20,22 @@
   function getParams() {
     const sp = new URLSearchParams(location.search);
     const g = k => sp.get(k) || undefined;
-    return { utm: { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') },
-              clid: { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') } };
+    const utm = { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') };
+    const clid = { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') };
+    // Remove undefined values
+    const cleanUtm = {};
+    const cleanClid = {};
+    Object.keys(utm).forEach(k => { if (utm[k]) cleanUtm[k] = utm[k]; });
+    Object.keys(clid).forEach(k => { if (clid[k]) cleanClid[k] = clid[k]; });
+    return { utm: cleanUtm, clid: cleanClid };
   }
   function sendEvent(type, extra = {}) {
-    const payload = { t:type, tenantId:TENANT_ID, siteToken:SITE_TOKEN, url:location.href, ref:document.referrer||null, sid:sid(), ...getParams(), ...extra };
+    const params = getParams();
+    // Debug: log UTM params (only for pageview to avoid spam)
+    if (type === 'pageview' && (Object.keys(params.utm).length > 0 || Object.keys(params.clid).length > 0)) {
+      console.log('🔍 UTM params detected:', params);
+    }
+    const payload = { t:type, tenantId:TENANT_ID, siteToken:SITE_TOKEN, url:location.href, ref:document.referrer||null, sid:sid(), ...params, ...extra };
     const body = JSON.stringify(payload);
     if (navigator.sendBeacon) {
       navigator.sendBeacon(`${COLLECTOR_BASE}/collect`, new Blob([body], { type: 'text/plain;charset=UTF-8' }));
