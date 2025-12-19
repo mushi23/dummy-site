@@ -21,9 +21,12 @@
     const sp = new URLSearchParams(location.search);
     const g = k => sp.get(k) || undefined;
     
-    // Debug: log current URL
-    console.log('🔍 Current URL:', location.href);
-    console.log('🔍 URL search params:', location.search);
+    // Debug: log current URL (only once per page load)
+    if (!window._url_logged) {
+      console.log('🔍 Page loaded - URL:', location.href);
+      console.log('🔍 Search params:', location.search || '(none)');
+      window._url_logged = true;
+    }
     
     // Get UTM params from current URL
     const currentUtm = {
@@ -189,6 +192,12 @@
       <p style="margin-top: 15px; font-size: 14px; color: #666;">
         <strong>⚠️ Important:</strong> Click one of the links above to test UTM tracking. The UTM parameters will be saved and persist across page navigations.
       </p>
+      <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 5px;">
+        <strong>Quick Test:</strong> 
+        <button onclick="window.location.href='index.html?utm_source=google&utm_medium=organic&utm_campaign=test';" style="padding: 8px 16px; background: #0d6efd; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Test Organic UTM</button>
+        <button onclick="window.location.href='index.html?utm_source=google&utm_medium=cpc&utm_campaign=test';" style="padding: 8px 16px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer;">Test Paid UTM</button>
+        <br><small style="display: block; margin-top: 8px;">After clicking, the page will reload with UTM params. Check console and status box.</small>
+      </div>
       <div id="utm-status" style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 5px; font-family: monospace; font-size: 12px;">
         <strong>Current UTM Status:</strong> <span id="utm-display">Loading...</span>
       </div>
