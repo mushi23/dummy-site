@@ -48,6 +48,16 @@
       keepalive:true
     }).catch(()=>{});
   }
+  // Log current URL and UTM params on page load for debugging
+  (function() {
+    const params = getParams();
+    console.log('📍 Page loaded - URL:', location.href);
+    console.log('📍 UTM params found:', params);
+    if (Object.keys(params.utm).length === 0 && Object.keys(params.clid).length === 0) {
+      console.warn('⚠️ No UTM parameters detected in URL. Make sure you clicked a traffic source link.');
+    }
+  })();
+  
   sendEvent('pageview');
   (function(){
     let engaged=false;
