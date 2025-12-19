@@ -97,11 +97,29 @@
   }
   function sendEvent(type, extra = {}) {
     const params = getParams();
-    // Debug: log UTM params (only for pageview to avoid spam)
-    if (type === 'pageview' && (Object.keys(params.utm).length > 0 || Object.keys(params.clid).length > 0)) {
-      console.log('🔍 UTM params detected:', params);
+    // Merge extra UTM params (from test buttons) with URL params - extra takes precedence
+    const mergedUtm = {...params.utm, ...(extra.utm || {})};
+    const mergedClid = {...params.clid, ...(extra.clid || {})};
+    const finalParams = { utm: mergedUtm, clid: mergedClid };
+    
+    // Debug: log what's being sent
+    if (Object.keys(finalParams.utm).length > 0 || Object.keys(finalParams.clid).length > 0) {
+      console.log('🔍 Sending event with UTM:', JSON.stringify(finalParams, null, 2));
     }
-    const payload = { t:type, tenantId:TENANT_ID, siteToken:SITE_TOKEN, url:location.href, ref:document.referrer||null, sid:sid(), ...params, ...extra };
+    
+    // Build payload - extract utm/clid from extra to avoid duplication
+    const {utm: extraUtm, clid: extraClid, ...extraWithoutUtm} = extra;
+    const payload = { 
+      t:type, 
+      tenantId:TENANT_ID, 
+      siteToken:SITE_TOKEN, 
+      url:location.href, 
+      ref:document.referrer||null, 
+      sid:sid(), 
+      utm: finalParams.utm,
+      clid: finalParams.clid,
+      ...extraWithoutUtm
+    };
     const body = JSON.stringify(payload);
     if (navigator.sendBeacon) {
       navigator.sendBeacon(`${COLLECTOR_BASE}/collect`, new Blob([body], { type: 'text/plain;charset=UTF-8' }));
@@ -205,7 +223,7 @@
       <div class="traffic-links">
         <button onclick="sendEvent('pageview', {utm: {source: 'google', medium: 'organic', campaign: 'seo'}}); alert('✅ Organic UTM event sent! Check /debug/last-event endpoint');" class="traffic-link organic" style="border: none; cursor: pointer; width: 100%;">Organic Search (Test)</button>
         <button onclick="sendEvent('pageview', {utm: {source: 'google', medium: 'cpc', campaign: 'summer_sale'}}); alert('✅ Paid UTM event sent! Check /debug/last-event endpoint');" class="traffic-link paid" style="border: none; cursor: pointer; width: 100%;">Paid Search (Test)</button>
-        <button onclick="sendEvent('pageview', {utm: {source: 'facebook', medium: 'social', campaign: 'brand_awareness'}}); alert('✅ Social UTM event sent! Check /debug/last-event endpoint');" class="traffic-link social" style="border: none; cursor: pointer; width: 100%;">Social Media (Test)</button>
+        <button onclick="const utmData = {utm: {source: 'facebook', medium: 'social', campaign: 'brand_awareness'}}; console.log('🔍 Sending social UTM:', utmData); sendEvent('pageview', utmData); alert('✅ Social UTM event sent! Check /debug/last-event endpoint');" class="traffic-link social" style="border: none; cursor: pointer; width: 100%;">Social Media (Test)</button>
         <button onclick="sendEvent('pageview', {}); alert('✅ Direct traffic event sent!');" class="traffic-link direct" style="border: none; cursor: pointer; width: 100%;">Direct Traffic (Test)</button>
       </div>
       <p style="margin-top: 15px; font-size: 14px; color: #666;">
