@@ -21,6 +21,10 @@
     const sp = new URLSearchParams(location.search);
     const g = k => sp.get(k) || undefined;
     
+    // Debug: log current URL
+    console.log('🔍 Current URL:', location.href);
+    console.log('🔍 URL search params:', location.search);
+    
     // Get UTM params from current URL
     const currentUtm = {
       source: g('utm_source'),
@@ -103,6 +107,28 @@
     window.addEventListener('scroll', ()=>{ const s=(window.scrollY+window.innerHeight)/(document.documentElement.scrollHeight||1); if(s>=0.75) markEngaged(); }, { passive:true });
     window.addEventListener('beforeunload', markBounce);
   })();
+  
+  // Display current UTM status
+  (function() {
+    function updateUtmDisplay() {
+      const params = getParams();
+      const utmDisplay = document.getElementById('utm-display');
+      if (utmDisplay) {
+        if (params.utm && Object.keys(params.utm).length > 0) {
+          utmDisplay.innerHTML = '<span style="color: green;">✓ Active</span><br>' + 
+            'Medium: <strong>' + (params.utm.medium || 'none') + '</strong><br>' +
+            'Source: ' + (params.utm.source || 'none') + '<br>' +
+            'Campaign: ' + (params.utm.campaign || 'none');
+        } else {
+          utmDisplay.innerHTML = '<span style="color: orange;">⚠ No UTM params</span><br>Click a traffic source link above to test.';
+        }
+      }
+    }
+    // Update on page load
+    setTimeout(updateUtmDisplay, 100);
+    // Update when URL changes (for single-page navigation)
+    window.addEventListener('popstate', updateUtmDisplay);
+  })();
 </script>
 </head>
 <body>
@@ -159,6 +185,9 @@
         <a href="index.html?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale" class="traffic-link paid">Paid Search (CPC)</a>
         <a href="index.html?utm_source=facebook&utm_medium=social&utm_campaign=brand_awareness" class="traffic-link social">Social Media</a>
         <a href="index.html" class="traffic-link direct">Direct Traffic</a>
+      </div>
+      <div id="utm-status" style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 5px; font-family: monospace; font-size: 12px;">
+        <strong>Current UTM Status:</strong> <span id="utm-display">Loading...</span>
       </div>
     </section>
 
