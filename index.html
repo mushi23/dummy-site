@@ -20,72 +20,8 @@
   function getParams() {
     const sp = new URLSearchParams(location.search);
     const g = k => sp.get(k) || undefined;
-    
-    // Debug: log current URL (only once per page load)
-    if (!window._url_logged) {
-      console.log('🔍 Page loaded - URL:', location.href);
-      console.log('🔍 Search params:', location.search || '(none)');
-      window._url_logged = true;
-    }
-    
-    // Get UTM params from current URL
-    const currentUtm = {
-      source: g('utm_source'),
-      medium: g('utm_medium'),
-      campaign: g('utm_campaign'),
-      term: g('utm_term'),
-      content: g('utm_content')
-    };
-    const currentClid = {
-      gclid: g('gclid'),
-      fbclid: g('fbclid'),
-      ttclid: g('ttclid')
-    };
-    
-    // Filter out undefined values
-    const cleanUtm = {};
-    const cleanClid = {};
-    Object.keys(currentUtm).forEach(k => { if (currentUtm[k]) cleanUtm[k] = currentUtm[k]; });
-    Object.keys(currentClid).forEach(k => { if (currentClid[k]) cleanClid[k] = currentClid[k]; });
-    
-    // Check if current URL has UTM params
-    const hasCurrentUtm = Object.keys(cleanUtm).length > 0;
-    const hasCurrentClid = Object.keys(cleanClid).length > 0;
-    
-    // If current URL has UTM params, save them to sessionStorage
-    if (hasCurrentUtm || hasCurrentClid) {
-      try {
-        const toStore = { utm: cleanUtm, clid: cleanClid };
-        sessionStorage.setItem('_utm_params', JSON.stringify(toStore));
-        console.log('🔍 UTM saved to sessionStorage:', toStore);
-      } catch(e) {
-        console.error('Failed to save UTM to sessionStorage:', e);
-      }
-      return { utm: cleanUtm, clid: cleanClid };
-    }
-    
-    // Otherwise, try to restore from sessionStorage
-    try {
-      const stored = sessionStorage.getItem('_utm_params');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const restoredUtm = parsed.utm || {};
-        const restoredClid = parsed.clid || {};
-        // Check if restored params have actual values
-        const hasRestoredUtm = Object.keys(restoredUtm).length > 0;
-        const hasRestoredClid = Object.keys(restoredClid).length > 0;
-        if (hasRestoredUtm || hasRestoredClid) {
-          console.log('🔍 UTM restored from sessionStorage:', { utm: restoredUtm, clid: restoredClid });
-          return { utm: restoredUtm, clid: restoredClid };
-        }
-      }
-    } catch(e) {
-      console.error('Failed to restore UTM from sessionStorage:', e);
-    }
-    
-    // Fallback: no UTM params
-    console.log('🔍 No UTM params found (current URL or sessionStorage)');
-    return { utm: {}, clid: {} };
+    return { utm: { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') },
+              clid: { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') } };
   }
   function sendEvent(type, extra = {}) {
     const payload = { t:type, tenantId:TENANT_ID, siteToken:SITE_TOKEN, url:location.href, ref:document.referrer||null, sid:sid(), ...getParams(), ...extra };
@@ -109,28 +45,6 @@
     setTimeout(markEngaged, 30_000);
     window.addEventListener('scroll', ()=>{ const s=(window.scrollY+window.innerHeight)/(document.documentElement.scrollHeight||1); if(s>=0.75) markEngaged(); }, { passive:true });
     window.addEventListener('beforeunload', markBounce);
-  })();
-  
-  // Display current UTM status
-  (function() {
-    function updateUtmDisplay() {
-      const params = getParams();
-      const utmDisplay = document.getElementById('utm-display');
-      if (utmDisplay) {
-        if (params.utm && Object.keys(params.utm).length > 0) {
-          utmDisplay.innerHTML = '<span style="color: green;">✓ Active</span><br>' + 
-            'Medium: <strong>' + (params.utm.medium || 'none') + '</strong><br>' +
-            'Source: ' + (params.utm.source || 'none') + '<br>' +
-            'Campaign: ' + (params.utm.campaign || 'none');
-        } else {
-          utmDisplay.innerHTML = '<span style="color: orange;">⚠ No UTM params</span><br>Click a traffic source link above to test.';
-        }
-      }
-    }
-    // Update on page load
-    setTimeout(updateUtmDisplay, 100);
-    // Update when URL changes (for single-page navigation)
-    window.addEventListener('popstate', updateUtmDisplay);
   })();
 </script>
 </head>
@@ -184,22 +98,10 @@
       <h2>Test Different Traffic Sources</h2>
       <p>Click these links to simulate different acquisition channels:</p>
       <div class="traffic-links">
-        <a href="index.html?utm_source=google&utm_medium=organic&utm_campaign=seo" class="traffic-link organic" onclick="console.log('🔍 Clicked Organic link'); return true;">Organic Search</a>
-        <a href="index.html?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale" class="traffic-link paid" onclick="console.log('🔍 Clicked Paid link'); return true;">Paid Search (CPC)</a>
-        <a href="index.html?utm_source=facebook&utm_medium=social&utm_campaign=brand_awareness" class="traffic-link social" onclick="console.log('🔍 Clicked Social link'); return true;">Social Media</a>
-        <a href="index.html" class="traffic-link direct" onclick="console.log('🔍 Clicked Direct link'); return true;">Direct Traffic</a>
-      </div>
-      <p style="margin-top: 15px; font-size: 14px; color: #666;">
-        <strong>⚠️ Important:</strong> Click one of the links above to test UTM tracking. The UTM parameters will be saved and persist across page navigations.
-      </p>
-      <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 5px;">
-        <strong>Quick Test:</strong> 
-        <button onclick="window.location.href='index.html?utm_source=google&utm_medium=organic&utm_campaign=test';" style="padding: 8px 16px; background: #0d6efd; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">Test Organic UTM</button>
-        <button onclick="window.location.href='index.html?utm_source=google&utm_medium=cpc&utm_campaign=test';" style="padding: 8px 16px; background: #ffc107; color: #333; border: none; border-radius: 4px; cursor: pointer;">Test Paid UTM</button>
-        <br><small style="display: block; margin-top: 8px;">After clicking, the page will reload with UTM params. Check console and status box.</small>
-      </div>
-      <div id="utm-status" style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 5px; font-family: monospace; font-size: 12px;">
-        <strong>Current UTM Status:</strong> <span id="utm-display">Loading...</span>
+        <a href="index.html?utm_source=google&utm_medium=organic&utm_campaign=seo" class="traffic-link organic">Organic Search</a>
+        <a href="index.html?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale" class="traffic-link paid">Paid Search (CPC)</a>
+        <a href="index.html?utm_source=facebook&utm_medium=social&utm_campaign=brand_awareness" class="traffic-link social">Social Media</a>
+        <a href="index.html" class="traffic-link direct">Direct Traffic</a>
       </div>
     </section>
 
@@ -231,4 +133,3 @@
   </footer>
 </body>
 </html>
-
