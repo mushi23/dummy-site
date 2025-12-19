@@ -203,14 +203,17 @@
       <h2>Test Different Traffic Sources</h2>
       <p>Click these links to simulate different acquisition channels:</p>
       <div class="traffic-links">
-        <a href="#" onclick="sendEvent('pageview', {utm: {source: 'google', medium: 'organic', campaign: 'seo'}}); window.location.href='index.html'; return false;" class="traffic-link organic">Organic Search (Test)</a>
-        <a href="#" onclick="sendEvent('pageview', {utm: {source: 'google', medium: 'cpc', campaign: 'summer_sale'}}); window.location.href='index.html'; return false;" class="traffic-link paid">Paid Search (Test)</a>
-        <a href="#" onclick="sendEvent('pageview', {utm: {source: 'facebook', medium: 'social', campaign: 'brand_awareness'}}); window.location.href='index.html'; return false;" class="traffic-link social">Social Media (Test)</a>
-        <a href="index.html" class="traffic-link direct">Direct Traffic</a>
+        <button onclick="sendEvent('pageview', {utm: {source: 'google', medium: 'organic', campaign: 'seo'}}); alert('✅ Organic UTM event sent! Check /debug/last-event endpoint');" class="traffic-link organic" style="border: none; cursor: pointer; width: 100%;">Organic Search (Test)</button>
+        <button onclick="sendEvent('pageview', {utm: {source: 'google', medium: 'cpc', campaign: 'summer_sale'}}); alert('✅ Paid UTM event sent! Check /debug/last-event endpoint');" class="traffic-link paid" style="border: none; cursor: pointer; width: 100%;">Paid Search (Test)</button>
+        <button onclick="sendEvent('pageview', {utm: {source: 'facebook', medium: 'social', campaign: 'brand_awareness'}}); alert('✅ Social UTM event sent! Check /debug/last-event endpoint');" class="traffic-link social" style="border: none; cursor: pointer; width: 100%;">Social Media (Test)</button>
+        <button onclick="sendEvent('pageview', {}); alert('✅ Direct traffic event sent!');" class="traffic-link direct" style="border: none; cursor: pointer; width: 100%;">Direct Traffic (Test)</button>
       </div>
       <p style="margin-top: 15px; font-size: 14px; color: #666;">
         <strong>Note:</strong> GitHub Pages strips query parameters via redirects. On a real site, UTM parameters will work normally. 
-        The test buttons above send UTM params directly in the event payload for testing purposes.
+        The test buttons above send UTM params directly in the event payload for testing purposes. They don't reload the page.
+      </p>
+      <p style="margin-top: 10px; font-size: 12px; color: #999;">
+        After clicking a test button, check: <code>https://dmwithai.selftrainai.com/api/collector/debug/last-event</code>
       </p>
     </section>
 
