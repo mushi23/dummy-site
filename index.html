@@ -203,11 +203,15 @@
       <h2>Test Different Traffic Sources</h2>
       <p>Click these links to simulate different acquisition channels:</p>
       <div class="traffic-links">
-        <a href="#" onclick="window.location.href='index.html?utm_source=google&utm_medium=organic&utm_campaign=seo'; return false;" class="traffic-link organic">Organic Search</a>
-        <a href="#" onclick="window.location.href='index.html?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale'; return false;" class="traffic-link paid">Paid Search (CPC)</a>
-        <a href="#" onclick="window.location.href='index.html?utm_source=facebook&utm_medium=social&utm_campaign=brand_awareness'; return false;" class="traffic-link social">Social Media</a>
+        <a href="#" onclick="sendEvent('pageview', {utm: {source: 'google', medium: 'organic', campaign: 'seo'}}); window.location.href='index.html'; return false;" class="traffic-link organic">Organic Search (Test)</a>
+        <a href="#" onclick="sendEvent('pageview', {utm: {source: 'google', medium: 'cpc', campaign: 'summer_sale'}}); window.location.href='index.html'; return false;" class="traffic-link paid">Paid Search (Test)</a>
+        <a href="#" onclick="sendEvent('pageview', {utm: {source: 'facebook', medium: 'social', campaign: 'brand_awareness'}}); window.location.href='index.html'; return false;" class="traffic-link social">Social Media (Test)</a>
         <a href="index.html" class="traffic-link direct">Direct Traffic</a>
       </div>
+      <p style="margin-top: 15px; font-size: 14px; color: #666;">
+        <strong>Note:</strong> GitHub Pages strips query parameters via redirects. On a real site, UTM parameters will work normally. 
+        The test buttons above send UTM params directly in the event payload for testing purposes.
+      </p>
     </section>
 
     <section class="actions">
