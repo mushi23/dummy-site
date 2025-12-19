@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Details - DMwithAI Demo Store</title>
+  <link rel="stylesheet" href="styles.css">
+<script>
+  const COLLECTOR_BASE = "https://dmwithai.selftrainai.com/api/collector";
+  const TENANT_ID = "2";
+  const SITE_TOKEN = "icE56lQxxTWOwTR8dntpNkj-I-Vrxl0-";
+  function sid() {
+    const k = "_our_sid"; let v = sessionStorage.getItem(k);
+    if (!v) { v = Math.random().toString(36).slice(2)+Date.now().toString(36); sessionStorage.setItem(k, v); }
+    return v;
+  }
+  function getParams() {
+    const sp = new URLSearchParams(location.search);
+    const g = k => sp.get(k) || undefined;
+    return { utm: { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') },
+              clid: { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') } };
+  }
+  function sendEvent(type, extra = {}) {
+    const payload = { t:type, tenantId:TENANT_ID, siteToken:SITE_TOKEN, url:location.href, ref:document.referrer||null, sid:sid(), ...getParams(), ...extra };
+    const body = JSON.stringify(payload);
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(`${COLLECTOR_BASE}/collect`, new Blob([body], { type: 'text/plain;charset=UTF-8' }));
+      return;
+    }
+    fetch(`${COLLECTOR_BASE}/collect`, {
+      method:'POST',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body,
+      keepalive:true
+    }).catch(()=>{});
+  }
+  sendEvent('pageview');
+  (function(){
+    let engaged=false;
+    const markEngaged=()=>{ if(engaged) return; engaged=true; sendEvent('engaged'); };
+    const markBounce =()=>{ if(engaged) return; sendEvent('bounce'); };
+    setTimeout(markEngaged, 30_000);
+    window.addEventListener('scroll', ()=>{ const s=(window.scrollY+window.innerHeight)/(document.documentElement.scrollHeight||1); if(s>=0.75) markEngaged(); }, { passive:true });
+    window.addEventListener('beforeunload', markBounce);
+  })();
+
+  // Get product details from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const productId = urlParams.get('id') || '1';
+  const productName = urlParams.get('name') || 'Product';
+  const prices = { '1': 29.99, '2': 49.99, '3': 79.99, '4': 99.99, '5': 149.99, '6': 199.99 };
+  const productPrice = prices[productId] || 29.99;
+
+  function handleAddToCart() {
+    sendEvent('conversion', {
+      goal: 'add_to_cart',
+      value: productPrice,
+      product_id: productId,
+      product_name: productName
+    });
+    alert('Added to cart! (Conversion event tracked)');
+  }
+
+  function handlePurchase() {
+    sendEvent('conversion', {
+      goal: 'purchase',
+      value: productPrice,
+      product_id: productId,
+      product_name: productName
+    });
+    alert('Purchase completed! (Conversion event tracked)');
+  }
+</script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="logo">DMwithAI Store</a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="products.html">Products</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="container">
+    <a href="products.html" class="back-link">← Back to Products</a>
+    
+    <div class="product-detail">
+      <div class="product-detail-image">
+        <div class="product-image-large">📦</div>
+      </div>
+      <div class="product-detail-info">
+        <h1 id="product-title">Demo Product</h1>
+        <p class="product-price-large" id="product-price">$<script>document.write(productPrice.toFixed(2))</script></p>
+        <p class="description">This is a demo product for testing cohort retention and audience segmentation features. Interact with the buttons below to generate conversion events.</p>
+        
+        <div class="product-actions">
+          <button onclick="handleAddToCart()" class="btn btn-primary btn-large">Add to Cart</button>
+          <button onclick="handlePurchase()" class="btn btn-success btn-large">Buy Now</button>
+        </div>
+
+        <div class="product-features">
+          <h3>Features</h3>
+          <ul>
+            <li>✅ Generates conversion events</li>
+            <li>✅ Tracks product views</li>
+            <li>✅ Records purchase value</li>
+            <li>✅ Tests cohort retention</li>
+            <li>✅ Enables audience segmentation</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2025 DMwithAI Demo Store. Built for testing analytics modules.</p>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('product-title').textContent = productName;
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About - DMwithAI Demo Store</title>
+  <link rel="stylesheet" href="styles.css">
+<script>
+  const COLLECTOR_BASE = "https://dmwithai.selftrainai.com/api/collector";
+  const TENANT_ID = "2";
+  const SITE_TOKEN = "icE56lQxxTWOwTR8dntpNkj-I-Vrxl0-";
+  function sid() {
+    const k = "_our_sid"; let v = sessionStorage.getItem(k);
+    if (!v) { v = Math.random().toString(36).slice(2)+Date.now().toString(36); sessionStorage.setItem(k, v); }
+    return v;
+  }
+  function getParams() {
+    const sp = new URLSearchParams(location.search);
+    const g = k => sp.get(k) || undefined;
+    return { utm: { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') },
+              clid: { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') } };
+  }
+  function sendEvent(type, extra = {}) {
+    const payload = { t:type, tenantId:TENANT_ID, siteToken:SITE_TOKEN, url:location.href, ref:document.referrer||null, sid:sid(), ...getParams(), ...extra };
+    const body = JSON.stringify(payload);
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(`${COLLECTOR_BASE}/collect`, new Blob([body], { type: 'text/plain;charset=UTF-8' }));
+      return;
+    }
+    fetch(`${COLLECTOR_BASE}/collect`, {
+      method:'POST',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body,
+      keepalive:true
+    }).catch(()=>{});
+  }
+  sendEvent('pageview');
+  (function(){
+    let engaged=false;
+    const markEngaged=()=>{ if(engaged) return; engaged=true; sendEvent('engaged'); };
+    const markBounce =()=>{ if(engaged) return; sendEvent('bounce'); };
+    setTimeout(markEngaged, 30_000);
+    window.addEventListener('scroll', ()=>{ const s=(window.scrollY+window.innerHeight)/(document.documentElement.scrollHeight||1); if(s>=0.75) markEngaged(); }, { passive:true });
+    window.addEventListener('beforeunload', markBounce);
+  })();
+</script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="logo">DMwithAI Store</a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="products.html">Products</a></li>
+        <li><a href="about.html" class="active">About</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="container">
+    <h1>About DMwithAI Demo Store</h1>
+    
+    <section class="content-section">
+      <h2>Purpose</h2>
+      <p>This is a demo website built specifically to test the DMwithAI analytics modules:</p>
+      <ul>
+        <li><strong>Cohort Retention Check</strong> - Track user retention over time by signup date, channel, and campaign</li>
+        <li><strong>Audience Segmentation</strong> - Identify high-performing audience segments based on behavior and demographics</li>
+      </ul>
+    </section>
+
+    <section class="content-section">
+      <h2>How It Works</h2>
+      <p>Every page includes a tracking snippet that automatically sends events to the DMwithAI collector:</p>
+      <ul>
+        <li><strong>Pageviews</strong> - Tracked on every page load</li>
+        <li><strong>Engagement</strong> - Triggered after 30 seconds or 75% scroll</li>
+        <li><strong>Bounces</strong> - Detected on quick exit without engagement</li>
+        <li><strong>Conversions</strong> - Triggered by button clicks (newsletter signup, add to cart, purchase)</li>
+      </ul>
+    </section>
+
+    <section class="content-section">
+      <h2>Testing Scenarios</h2>
+      <p>You can test various scenarios:</p>
+      <ul>
+        <li>Navigate between pages to generate multiple pageviews</li>
+        <li>Use different UTM parameters to simulate different traffic sources</li>
+        <li>Click conversion buttons to generate conversion events</li>
+        <li>Return to the site later to test returning visitor detection</li>
+        <li>Generate enough sessions (100+) to enable audience segmentation</li>
+      </ul>
+    </section>
+
+    <section class="content-section">
+      <h2>Traffic Sources</h2>
+      <p>Test different acquisition channels by using these UTM parameters:</p>
+      <ul>
+        <li><code>?utm_source=google&utm_medium=organic</code> - Organic search</li>
+        <li><code>?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale</code> - Paid search</li>
+        <li><code>?utm_source=facebook&utm_medium=social&utm_campaign=brand_awareness</code> - Social media</li>
+        <li>No parameters - Direct traffic</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2025 DMwithAI Demo Store. Built for testing analytics modules.</p>
+    </div>
+  </footer>
+</body>
+</html>
+

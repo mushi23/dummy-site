@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dummy GA4 Test Site 22</title>
+  <title>DMwithAI Demo Store - Home</title>
+  <link rel="stylesheet" href="styles.css">
 <!-- Google tag (gtag.js) -->
 <script>
   /* === CONFIG (generated) === */
@@ -48,7 +49,87 @@
 </script>
 </head>
 <body>
-  <h1>Hello, this is my test site 22🚀</h1>
-  <p>If you see this, GA4 should start tracking visits.</p>
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="logo">DMwithAI Store</a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="products.html">Products</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Welcome to DMwithAI Demo Store 🚀</h1>
+      <p class="subtitle">Testing Cohort Retention & Audience Segmentation</p>
+      <p>This is a demo site to test the DMwithAI analytics modules. Navigate through different pages and interact with elements to generate tracking events.</p>
+    </section>
+
+    <section class="features">
+      <h2>What You Can Test</h2>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>📊 Cohort Retention</h3>
+          <p>Track user retention over time by signup date, channel, and campaign.</p>
+          <ul>
+            <li>Signup detection from first session</li>
+            <li>Retention at Day 1, 7, 14, 30</li>
+            <li>Channel-based cohorts</li>
+            <li>Campaign-based cohorts</li>
+          </ul>
+        </div>
+        <div class="feature-card">
+          <h3>🎯 Audience Segmentation</h3>
+          <p>Identify high-performing audience segments by behavior and demographics.</p>
+          <ul>
+            <li>New vs Returning visitors</li>
+            <li>Channel segmentation</li>
+            <li>Engagement-based segments</li>
+            <li>Conversion rate analysis</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="traffic-sources">
+      <h2>Test Different Traffic Sources</h2>
+      <p>Click these links to simulate different acquisition channels:</p>
+      <div class="traffic-links">
+        <a href="index.html?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale" class="traffic-link organic">Organic Search</a>
+        <a href="index.html?utm_source=google&utm_medium=organic&utm_campaign=seo" class="traffic-link paid">Paid Search (CPC)</a>
+        <a href="index.html?utm_source=facebook&utm_medium=social&utm_campaign=brand_awareness" class="traffic-link social">Social Media</a>
+        <a href="index.html" class="traffic-link direct">Direct Traffic</a>
+      </div>
+    </section>
+
+    <section class="actions">
+      <h2>Quick Actions</h2>
+      <div class="action-buttons">
+        <a href="products.html" class="btn btn-primary">Browse Products</a>
+        <a href="contact.html" class="btn btn-secondary">Contact Us</a>
+        <button onclick="sendEvent('conversion', {goal: 'newsletter_signup', value: 0})" class="btn btn-success">Sign Up for Newsletter</button>
+      </div>
+    </section>
+
+    <section class="info">
+      <h2>Tracking Events</h2>
+      <p>The following events are automatically tracked:</p>
+      <ul>
+        <li><strong>pageview</strong> - On every page load</li>
+        <li><strong>engaged</strong> - After 30 seconds or 75% scroll</li>
+        <li><strong>bounce</strong> - On quick exit without engagement</li>
+        <li><strong>conversion</strong> - On button clicks (newsletter, purchase, etc.)</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2025 DMwithAI Demo Store. Built for testing analytics modules.</p>
+    </div>
+  </footer>
 </body>
 </html>
