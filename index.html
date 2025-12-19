@@ -35,23 +35,26 @@
       ttclid: g('ttclid')
     };
     
+    // Filter out undefined values
+    const cleanUtm = {};
+    const cleanClid = {};
+    Object.keys(currentUtm).forEach(k => { if (currentUtm[k]) cleanUtm[k] = currentUtm[k]; });
+    Object.keys(currentClid).forEach(k => { if (currentClid[k]) cleanClid[k] = currentClid[k]; });
+    
     // Check if current URL has UTM params
-    const hasCurrentUtm = Object.values(currentUtm).some(v => v);
-    const hasCurrentClid = Object.values(currentClid).some(v => v);
+    const hasCurrentUtm = Object.keys(cleanUtm).length > 0;
+    const hasCurrentClid = Object.keys(cleanClid).length > 0;
     
     // If current URL has UTM params, save them to sessionStorage
     if (hasCurrentUtm || hasCurrentClid) {
       try {
-        sessionStorage.setItem('_utm_params', JSON.stringify({
-          utm: currentUtm,
-          clid: currentClid
-        }));
-      } catch(e) {}
-    }
-    
-    // If current URL has UTM params, use them
-    if (hasCurrentUtm || hasCurrentClid) {
-      return { utm: currentUtm, clid: currentClid };
+        const toStore = { utm: cleanUtm, clid: cleanClid };
+        sessionStorage.setItem('_utm_params', JSON.stringify(toStore));
+        console.log('🔍 UTM saved to sessionStorage:', toStore);
+      } catch(e) {
+        console.error('Failed to save UTM to sessionStorage:', e);
+      }
+      return { utm: cleanUtm, clid: cleanClid };
     }
     
     // Otherwise, try to restore from sessionStorage
@@ -59,13 +62,22 @@
       const stored = sessionStorage.getItem('_utm_params');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed.utm || parsed.clid) {
-          return { utm: parsed.utm || {}, clid: parsed.clid || {} };
+        const restoredUtm = parsed.utm || {};
+        const restoredClid = parsed.clid || {};
+        // Check if restored params have actual values
+        const hasRestoredUtm = Object.keys(restoredUtm).length > 0;
+        const hasRestoredClid = Object.keys(restoredClid).length > 0;
+        if (hasRestoredUtm || hasRestoredClid) {
+          console.log('🔍 UTM restored from sessionStorage:', { utm: restoredUtm, clid: restoredClid });
+          return { utm: restoredUtm, clid: restoredClid };
         }
       }
-    } catch(e) {}
+    } catch(e) {
+      console.error('Failed to restore UTM from sessionStorage:', e);
+    }
     
     // Fallback: no UTM params
+    console.log('🔍 No UTM params found (current URL or sessionStorage)');
     return { utm: {}, clid: {} };
   }
   function sendEvent(type, extra = {}) {
@@ -178,3 +190,4 @@
   </footer>
 </body>
 </html>
+
