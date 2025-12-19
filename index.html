@@ -20,14 +20,42 @@
   function getParams() {
     const sp = new URLSearchParams(location.search);
     const g = k => sp.get(k) || undefined;
+    
+    // Get UTM params from current URL
     const utm = { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') };
     const clid = { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') };
+    
     // Remove undefined values
     const cleanUtm = {};
     const cleanClid = {};
     Object.keys(utm).forEach(k => { if (utm[k]) cleanUtm[k] = utm[k]; });
     Object.keys(clid).forEach(k => { if (clid[k]) cleanClid[k] = clid[k]; });
-    return { utm: cleanUtm, clid: cleanClid };
+    
+    // If we have UTM params in URL, save them to sessionStorage (persist across redirects)
+    if (Object.keys(cleanUtm).length > 0 || Object.keys(cleanClid).length > 0) {
+      try {
+        sessionStorage.setItem('_utm_params', JSON.stringify({ utm: cleanUtm, clid: cleanClid }));
+      } catch(e) {
+        // Ignore storage errors (private mode, etc.)
+      }
+      return { utm: cleanUtm, clid: cleanClid };
+    }
+    
+    // If no UTM params in URL, try to restore from sessionStorage (in case redirect stripped them)
+    try {
+      const stored = sessionStorage.getItem('_utm_params');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.utm && Object.keys(parsed.utm).length > 0) {
+          return { utm: parsed.utm, clid: parsed.clid || {} };
+        }
+      }
+    } catch(e) {
+      // Ignore storage errors
+    }
+    
+    // No UTM params found
+    return { utm: {}, clid: {} };
   }
   function sendEvent(type, extra = {}) {
     const params = getParams();
@@ -50,11 +78,15 @@
   }
   // Log current URL and UTM params on page load for debugging
   (function() {
+    const urlHasParams = location.search.includes('utm_') || location.search.includes('gclid') || location.search.includes('fbclid');
     const params = getParams();
     console.log('📍 Page loaded - URL:', location.href);
+    console.log('📍 URL has query params:', urlHasParams);
     console.log('📍 UTM params found:', params);
-    if (Object.keys(params.utm).length === 0 && Object.keys(params.clid).length === 0) {
-      console.warn('⚠️ No UTM parameters detected in URL. Make sure you clicked a traffic source link.');
+    if (Object.keys(params.utm).length > 0 || Object.keys(params.clid).length > 0) {
+      console.log('✅ UTM parameters will be sent to collector');
+    } else {
+      console.warn('⚠️ No UTM parameters detected. Click a traffic source link to test.');
     }
   })();
   
