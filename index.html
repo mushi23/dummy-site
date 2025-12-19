@@ -18,12 +18,50 @@
     return v;
   }
   function getParams() {
-    const sp = new URLSearchParams(location.search);
-    const g = k => sp.get(k) || undefined;
+    // Try multiple sources for UTM params (in order of preference):
     
-    // Get UTM params from current URL
-    const utm = { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') };
-    const clid = { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') };
+    // 1. Try to get from Performance API (original request URL before redirects)
+    let originalUrl = null;
+    try {
+      const navEntries = performance.getEntriesByType('navigation');
+      if (navEntries.length > 0 && navEntries[0].name) {
+        originalUrl = navEntries[0].name;
+      }
+    } catch(e) {
+      // Performance API not available
+    }
+    
+    // 2. Try current URL
+    let sp = new URLSearchParams(location.search);
+    let g = k => sp.get(k) || undefined;
+    
+    // 3. If current URL has no params, try original URL from Performance API
+    if (Object.keys(Array.from(sp.keys())).length === 0 && originalUrl && originalUrl !== location.href) {
+      try {
+        const origUrlObj = new URL(originalUrl);
+        sp = new URLSearchParams(origUrlObj.search);
+        g = k => sp.get(k) || undefined;
+      } catch(e) {
+        // Ignore URL parsing errors
+      }
+    }
+    
+    // 4. Extract UTM params
+    let utm = { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') };
+    let clid = { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') };
+    
+    // 5. If still no params, try referrer
+    if (Object.keys(utm).filter(k => utm[k]).length === 0 && document.referrer) {
+      try {
+        const refUrl = new URL(document.referrer);
+        const refSp = new URLSearchParams(refUrl.search);
+        const refG = k => refSp.get(k) || undefined;
+        utm = { source:refG('utm_source'), medium:refG('utm_medium'), campaign:refG('utm_campaign'), term:refG('utm_term'), content:refG('utm_content') };
+        clid = { gclid:refG('gclid'), fbclid:refG('fbclid'), ttclid:refG('ttclid') };
+      } catch(e) {
+        // Ignore URL parsing errors
+      }
+    }
     
     // Remove undefined values
     const cleanUtm = {};
@@ -31,7 +69,7 @@
     Object.keys(utm).forEach(k => { if (utm[k]) cleanUtm[k] = utm[k]; });
     Object.keys(clid).forEach(k => { if (clid[k]) cleanClid[k] = clid[k]; });
     
-    // If we have UTM params in URL, save them to sessionStorage (persist across redirects)
+    // Save to sessionStorage for persistence across page navigations
     if (Object.keys(cleanUtm).length > 0 || Object.keys(cleanClid).length > 0) {
       try {
         sessionStorage.setItem('_utm_params', JSON.stringify({ utm: cleanUtm, clid: cleanClid }));
@@ -41,7 +79,7 @@
       return { utm: cleanUtm, clid: cleanClid };
     }
     
-    // If no UTM params in URL, try to restore from sessionStorage (in case redirect stripped them)
+    // If still no params, try to restore from sessionStorage
     try {
       const stored = sessionStorage.getItem('_utm_params');
       if (stored) {
@@ -79,12 +117,26 @@
   // Log current URL and UTM params on page load for debugging
   (function() {
     const urlHasParams = location.search.includes('utm_') || location.search.includes('gclid') || location.search.includes('fbclid');
+    let originalUrl = null;
+    try {
+      const navEntries = performance.getEntriesByType('navigation');
+      if (navEntries.length > 0 && navEntries[0].name) {
+        originalUrl = navEntries[0].name;
+      }
+    } catch(e) {}
+    
     const params = getParams();
-    console.log('📍 Page loaded - URL:', location.href);
+    console.log('📍 Page loaded - Current URL:', location.href);
+    if (originalUrl && originalUrl !== location.href) {
+      console.log('📍 Original URL (before redirect):', originalUrl);
+    }
     console.log('📍 URL has query params:', urlHasParams);
     console.log('📍 UTM params found:', params);
     if (Object.keys(params.utm).length > 0 || Object.keys(params.clid).length > 0) {
       console.log('✅ UTM parameters will be sent to collector');
+      if (params.utm.medium) {
+        console.log('   → Channel should be:', params.utm.medium === 'organic' ? 'organic' : params.utm.medium === 'cpc' ? 'paid' : params.utm.medium === 'social' ? 'social' : 'unknown');
+      }
     } else {
       console.warn('⚠️ No UTM parameters detected. Click a traffic source link to test.');
     }
@@ -151,9 +203,9 @@
       <h2>Test Different Traffic Sources</h2>
       <p>Click these links to simulate different acquisition channels:</p>
       <div class="traffic-links">
-        <a href="index.html?utm_source=google&utm_medium=organic&utm_campaign=seo" class="traffic-link organic">Organic Search</a>
-        <a href="index.html?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale" class="traffic-link paid">Paid Search (CPC)</a>
-        <a href="index.html?utm_source=facebook&utm_medium=social&utm_campaign=brand_awareness" class="traffic-link social">Social Media</a>
+        <a href="#" onclick="window.location.href='index.html?utm_source=google&utm_medium=organic&utm_campaign=seo'; return false;" class="traffic-link organic">Organic Search</a>
+        <a href="#" onclick="window.location.href='index.html?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale'; return false;" class="traffic-link paid">Paid Search (CPC)</a>
+        <a href="#" onclick="window.location.href='index.html?utm_source=facebook&utm_medium=social&utm_campaign=brand_awareness'; return false;" class="traffic-link social">Social Media</a>
         <a href="index.html" class="traffic-link direct">Direct Traffic</a>
       </div>
     </section>
