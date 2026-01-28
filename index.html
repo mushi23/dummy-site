@@ -13,113 +13,33 @@
   const SITE_TOKEN = "icE56lQxxTWOwTR8dntpNkj-I-Vrxl0-";
 
   function sid() {
-    const k = "_our_sid"; let v = sessionStorage.getItem(k);
-    if (!v) { v = Math.random().toString(36).slice(2)+Date.now().toString(36); sessionStorage.setItem(k, v); }
+    // Use localStorage for cross-session persistence (better for returning user detection)
+    // Falls back to sessionStorage if localStorage unavailable
+    const k = "_our_sid";
+    let storage = typeof localStorage !== 'undefined' ? localStorage : sessionStorage;
+    let v = storage.getItem(k);
+    if (!v) {
+      v = Math.random().toString(36).slice(2)+Date.now().toString(36);
+      try {
+        storage.setItem(k, v);
+      } catch(e) {
+        // Fallback to sessionStorage if localStorage fails (e.g., private mode)
+        if (storage !== sessionStorage) {
+          storage = sessionStorage;
+          storage.setItem(k, v);
+        }
+      }
+    }
     return v;
   }
   function getParams() {
-    // Try multiple sources for UTM params (in order of preference):
-    
-    // 1. Try to get from Performance API (original request URL before redirects)
-    let originalUrl = null;
-    try {
-      const navEntries = performance.getEntriesByType('navigation');
-      if (navEntries.length > 0 && navEntries[0].name) {
-        originalUrl = navEntries[0].name;
-      }
-    } catch(e) {
-      // Performance API not available
-    }
-    
-    // 2. Try current URL
-    let sp = new URLSearchParams(location.search);
-    let g = k => sp.get(k) || undefined;
-    
-    // 3. If current URL has no params, try original URL from Performance API
-    if (Object.keys(Array.from(sp.keys())).length === 0 && originalUrl && originalUrl !== location.href) {
-      try {
-        const origUrlObj = new URL(originalUrl);
-        sp = new URLSearchParams(origUrlObj.search);
-        g = k => sp.get(k) || undefined;
-      } catch(e) {
-        // Ignore URL parsing errors
-      }
-    }
-    
-    // 4. Extract UTM params
-    let utm = { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') };
-    let clid = { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') };
-    
-    // 5. If still no params, try referrer
-    if (Object.keys(utm).filter(k => utm[k]).length === 0 && document.referrer) {
-      try {
-        const refUrl = new URL(document.referrer);
-        const refSp = new URLSearchParams(refUrl.search);
-        const refG = k => refSp.get(k) || undefined;
-        utm = { source:refG('utm_source'), medium:refG('utm_medium'), campaign:refG('utm_campaign'), term:refG('utm_term'), content:refG('utm_content') };
-        clid = { gclid:refG('gclid'), fbclid:refG('fbclid'), ttclid:refG('ttclid') };
-      } catch(e) {
-        // Ignore URL parsing errors
-      }
-    }
-    
-    // Remove undefined values
-    const cleanUtm = {};
-    const cleanClid = {};
-    Object.keys(utm).forEach(k => { if (utm[k]) cleanUtm[k] = utm[k]; });
-    Object.keys(clid).forEach(k => { if (clid[k]) cleanClid[k] = clid[k]; });
-    
-    // Save to sessionStorage for persistence across page navigations
-    if (Object.keys(cleanUtm).length > 0 || Object.keys(cleanClid).length > 0) {
-      try {
-        sessionStorage.setItem('_utm_params', JSON.stringify({ utm: cleanUtm, clid: cleanClid }));
-      } catch(e) {
-        // Ignore storage errors (private mode, etc.)
-      }
-      return { utm: cleanUtm, clid: cleanClid };
-    }
-    
-    // If still no params, try to restore from sessionStorage
-    try {
-      const stored = sessionStorage.getItem('_utm_params');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.utm && Object.keys(parsed.utm).length > 0) {
-          return { utm: parsed.utm, clid: parsed.clid || {} };
-        }
-      }
-    } catch(e) {
-      // Ignore storage errors
-    }
-    
-    // No UTM params found
-    return { utm: {}, clid: {} };
+    const sp = new URLSearchParams(location.search);
+    const g = k => sp.get(k) || undefined;
+    return { utm: { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') },
+              clid: { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') } };
   }
   function sendEvent(type, extra = {}) {
-    const params = getParams();
-    // Merge extra UTM params (from test buttons) with URL params - extra takes precedence
-    const mergedUtm = {...params.utm, ...(extra.utm || {})};
-    const mergedClid = {...params.clid, ...(extra.clid || {})};
-    const finalParams = { utm: mergedUtm, clid: mergedClid };
-    
-    // Debug: log what's being sent
-    if (Object.keys(finalParams.utm).length > 0 || Object.keys(finalParams.clid).length > 0) {
-      console.log('🔍 Sending event with UTM:', JSON.stringify(finalParams, null, 2));
-    }
-    
-    // Build payload - extract utm/clid from extra to avoid duplication
-    const {utm: extraUtm, clid: extraClid, ...extraWithoutUtm} = extra;
-    const payload = { 
-      t:type, 
-      tenantId:TENANT_ID, 
-      siteToken:SITE_TOKEN, 
-      url:location.href, 
-      ref:document.referrer||null, 
-      sid:sid(), 
-      utm: finalParams.utm,
-      clid: finalParams.clid,
-      ...extraWithoutUtm
-    };
+    const payload = { t:type, tenantId:TENANT_ID, siteToken:SITE_TOKEN, url:location.href, ref:document.referrer||null, sid:sid(), ...getParams(), ...extra };
     const body = JSON.stringify(payload);
     if (navigator.sendBeacon) {
       navigator.sendBeacon(`${COLLECTOR_BASE}/collect`, new Blob([body], { type: 'text/plain;charset=UTF-8' }));
@@ -132,34 +52,6 @@
       keepalive:true
     }).catch(()=>{});
   }
-  // Log current URL and UTM params on page load for debugging
-  (function() {
-    const urlHasParams = location.search.includes('utm_') || location.search.includes('gclid') || location.search.includes('fbclid');
-    let originalUrl = null;
-    try {
-      const navEntries = performance.getEntriesByType('navigation');
-      if (navEntries.length > 0 && navEntries[0].name) {
-        originalUrl = navEntries[0].name;
-      }
-    } catch(e) {}
-    
-    const params = getParams();
-    console.log('📍 Page loaded - Current URL:', location.href);
-    if (originalUrl && originalUrl !== location.href) {
-      console.log('📍 Original URL (before redirect):', originalUrl);
-    }
-    console.log('📍 URL has query params:', urlHasParams);
-    console.log('📍 UTM params found:', params);
-    if (Object.keys(params.utm).length > 0 || Object.keys(params.clid).length > 0) {
-      console.log('✅ UTM parameters will be sent to collector');
-      if (params.utm.medium) {
-        console.log('   → Channel should be:', params.utm.medium === 'organic' ? 'organic' : params.utm.medium === 'cpc' ? 'paid' : params.utm.medium === 'social' ? 'social' : 'unknown');
-      }
-    } else {
-      console.warn('⚠️ No UTM parameters detected. Click a traffic source link to test.');
-    }
-  })();
-  
   sendEvent('pageview');
   (function(){
     let engaged=false;
@@ -168,6 +60,76 @@
     setTimeout(markEngaged, 30_000);
     window.addEventListener('scroll', ()=>{ const s=(window.scrollY+window.innerHeight)/(document.documentElement.scrollHeight||1); if(s>=0.75) markEngaged(); }, { passive:true });
     window.addEventListener('beforeunload', markBounce);
+  })();
+  
+  /* === CONVERSION TRACKING === */
+  // Option A: Manual tracking - websites can call sendEvent('conversion', { goal: 'purchase', value: 99.99 })
+  // Option C: Automatic form submission detection
+  (function(){
+    let conversionTracked = false;
+    const trackConversion = (source, metadata = {}) => {
+      if (conversionTracked) return; // Only track one conversion per session
+      conversionTracked = true;
+      sendEvent('conversion', { source: source, ...metadata });
+    };
+    
+    // Make sendEvent available globally for manual tracking (Option A)
+    window.sendConversionEvent = (goal, value) => {
+      trackConversion('manual', { goal: goal || 'conversion', value: value });
+    };
+    
+    // Option C: Automatic form submission detection
+    document.addEventListener('submit', (e) => {
+      const form = e.target;
+      if (!form || form.tagName !== 'FORM') return;
+      
+      // Check if form has data attribute to exclude it
+      if (form.dataset.trackConversion === 'false') return;
+      
+      // Extract form metadata
+      const formId = form.id || form.name || 'unknown';
+      const formAction = form.action || location.href;
+      const formMethod = form.method || 'get';
+      
+      // Check for common conversion form patterns
+      const conversionPatterns = [
+        /signup|register|subscribe|newsletter/i,
+        /contact|inquiry|lead|quote/i,
+        /checkout|purchase|order|buy/i,
+        /download|demo|trial/i,
+        /apply|application/i
+      ];
+      
+      const isConversionForm = 
+        form.dataset.trackConversion === 'true' ||
+        conversionPatterns.some(pattern => 
+          pattern.test(formId) || 
+          pattern.test(formAction) || 
+          pattern.test(form.className)
+        );
+      
+      if (isConversionForm) {
+        // Extract form data for metadata
+        const formData = new FormData(form);
+        const metadata = {
+          goal: form.dataset.conversionGoal || 'form_submission',
+          form_id: formId,
+          form_action: formAction,
+          form_method: formMethod
+        };
+        
+        // Try to extract value if present in form
+        const valueField = form.querySelector('[name*="value"], [name*="amount"], [name*="price"]');
+        if (valueField && valueField.value) {
+          const parsedValue = parseFloat(valueField.value);
+          if (!isNaN(parsedValue)) {
+            metadata.value = parsedValue;
+          }
+        }
+        
+        trackConversion('form_submission', metadata);
+      }
+    }, true); // Use capture phase to catch all form submissions
   })();
 </script>
 </head>
