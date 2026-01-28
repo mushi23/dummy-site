@@ -6,7 +6,7 @@
   <title>Product Details - DMwithAI Demo Store</title>
   <link rel="stylesheet" href="styles.css">
 <script>
-  const COLLECTOR_BASE = "https://dmwithai.selftrainai.com/api/collector";
+  const COLLECTOR_BASE = "http://localhost:8002";
   const TENANT_ID = "2";
   const SITE_TOKEN = "icE56lQxxTWOwTR8dntpNkj-I-Vrxl0-";
   function sid() {
@@ -17,53 +17,8 @@
   function getParams() {
     const sp = new URLSearchParams(location.search);
     const g = k => sp.get(k) || undefined;
-    
-    // Get UTM params from current URL
-    const currentUtm = {
-      source: g('utm_source'),
-      medium: g('utm_medium'),
-      campaign: g('utm_campaign'),
-      term: g('utm_term'),
-      content: g('utm_content')
-    };
-    const currentClid = {
-      gclid: g('gclid'),
-      fbclid: g('fbclid'),
-      ttclid: g('ttclid')
-    };
-    
-    // Check if current URL has UTM params
-    const hasCurrentUtm = Object.values(currentUtm).some(v => v);
-    const hasCurrentClid = Object.values(currentClid).some(v => v);
-    
-    // If current URL has UTM params, save them to sessionStorage
-    if (hasCurrentUtm || hasCurrentClid) {
-      try {
-        sessionStorage.setItem('_utm_params', JSON.stringify({
-          utm: currentUtm,
-          clid: currentClid
-        }));
-      } catch(e) {}
-    }
-    
-    // If current URL has UTM params, use them
-    if (hasCurrentUtm || hasCurrentClid) {
-      return { utm: currentUtm, clid: currentClid };
-    }
-    
-    // Otherwise, try to restore from sessionStorage
-    try {
-      const stored = sessionStorage.getItem('_utm_params');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.utm || parsed.clid) {
-          return { utm: parsed.utm || {}, clid: parsed.clid || {} };
-        }
-      }
-    } catch(e) {}
-    
-    // Fallback: no UTM params
-    return { utm: {}, clid: {} };
+    return { utm: { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') },
+              clid: { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') } };
   }
   function sendEvent(type, extra = {}) {
     const payload = { t:type, tenantId:TENANT_ID, siteToken:SITE_TOKEN, url:location.href, ref:document.referrer||null, sid:sid(), ...getParams(), ...extra };
