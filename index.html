@@ -132,6 +132,54 @@
     }, true); // Use capture phase to catch all form submissions
   })();
 </script>
+  <script>
+  (function() {
+    var SURVEY_ID = "87f5fc72-c161-4c98-90a7-4b6baa7e50b3";
+    var EXP_DAYS = 7;
+    var SURVEY_APP_BASE = "http://localhost:3000";
+    var AUTO_TRIGGER = true;
+    var AUTO_DELAY_MS = 20000;
+    var COOLDOWN_DAYS = 7;
+    var sid = (function() {
+      try {
+        return localStorage.getItem("_our_sid") || "";
+      } catch (e) {
+        return "";
+      }
+    })();
+    var userKey = (window.DMWIdentity && (window.DMWIdentity.user_key || window.DMWIdentity.user_id)) || "";
+
+    function openSurvey() {
+      fetch("http://localhost:8001/api/surveys/public/" + SURVEY_ID + "/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sid: sid, user_key: userKey, exp_days: EXP_DAYS })
+      })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (!data.survey_token) return;
+          var url = SURVEY_APP_BASE + "/surveys/public/" + SURVEY_ID + "?st=" + encodeURIComponent(data.survey_token) + "&origin=website";
+          window.open(url, "_blank");
+        });
+    }
+
+    // Example trigger: call openSurvey() on a button click
+    window.DMWSurveyOpen = openSurvey;
+
+    // Auto-trigger (optional, once per cooldown)
+    if (AUTO_TRIGGER) {
+      var shownKey = "survey_shown_" + SURVEY_ID;
+      var lastShown = parseInt(localStorage.getItem(shownKey) || "0", 10);
+      var cooldownMs = COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+      if (Date.now() - lastShown > cooldownMs) {
+        setTimeout(function() {
+          openSurvey();
+          localStorage.setItem(shownKey, Date.now().toString());
+        }, AUTO_DELAY_MS);
+      }
+    }
+  })();
+</script>
 </head>
 <body>
   <nav class="navbar">
