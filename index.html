@@ -149,7 +149,8 @@
     })();
     var userKey = (window.DMWIdentity && (window.DMWIdentity.user_key || window.DMWIdentity.user_id)) || "";
 
-    function openSurvey() {
+    function openSurvey(opts) {
+      var usePopup = opts && opts.popup;
       fetch("https://6e3e-41-90-186-108.ngrok-free.app/api/surveys/public/" + SURVEY_ID + "/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -159,12 +160,16 @@
         .then(function(data) {
           if (!data.survey_token) return;
           var url = SURVEY_APP_BASE + "/surveys/public/" + SURVEY_ID + "?st=" + encodeURIComponent(data.survey_token) + "&origin=website";
-          window.open(url, "_blank");
+          if (usePopup) {
+            window.open(url, "_blank");
+          } else {
+            window.location.href = url;
+          }
         });
     }
 
     // Example trigger: call openSurvey() on a button click
-    window.DMWSurveyOpen = openSurvey;
+    window.DMWSurveyOpen = function() { return openSurvey({ popup: true }); };
 
     // Auto-trigger (optional, once per cooldown)
     if (AUTO_TRIGGER) {
@@ -173,7 +178,7 @@
       var cooldownMs = COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
       if (Date.now() - lastShown > cooldownMs) {
         setTimeout(function() {
-          openSurvey();
+          openSurvey({ popup: false });
           localStorage.setItem(shownKey, Date.now().toString());
         }, AUTO_DELAY_MS);
       }
