@@ -136,7 +136,7 @@
   (function() {
     var SURVEY_ID = "87f5fc72-c161-4c98-90a7-4b6baa7e50b3";
     var EXP_DAYS = 7;
-    var SURVEY_APP_BASE = "http://localhost:3000";
+    var SURVEY_APP_BASE = "https://cb65-41-90-186-108.ngrok-free.app";
     var AUTO_TRIGGER = true;
     var AUTO_DELAY_MS = 20000;
     var COOLDOWN_DAYS = 7;
@@ -150,7 +150,7 @@
     var userKey = (window.DMWIdentity && (window.DMWIdentity.user_key || window.DMWIdentity.user_id)) || "";
 
     function openSurvey() {
-      fetch("http://localhost:8001/api/surveys/public/" + SURVEY_ID + "/session", {
+      fetch("https://a70f-41-90-186-108.ngrok-free.app/api/surveys/public/" + SURVEY_ID + "/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sid: sid, user_key: userKey, exp_days: EXP_DAYS })
