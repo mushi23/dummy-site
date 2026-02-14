@@ -1,7 +1,7 @@
 /* === CONFIG (generated) === */
   const COLLECTOR_BASE = "https://dmwithai.selftrainai.com/api/collector";
   const TENANT_ID = "2";
-  const SITE_TOKEN = "FKJGcfGKiNsQkglXD-O7PRUvIqHZq8cj";
+  const SITE_TOKEN = "C23bLSndtg3N_K7EmrOFk_k4LnNGVzkX";
 
   function sid() {
     // Use localStorage for cross-session persistence (better for returning user detection)
