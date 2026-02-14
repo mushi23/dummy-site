@@ -6,78 +6,6 @@
   <title>Product Details - DMwithAI Demo Store</title>
   <link rel="stylesheet" href="styles.css">
 <script>
-  const COLLECTOR_BASE = "http://localhost:8002";
-  const TENANT_ID = "2";
-  const SITE_TOKEN = "icE56lQxxTWOwTR8dntpNkj-I-Vrxl0-";
-  function sid() {
-    const k = "_our_sid"; let v = sessionStorage.getItem(k);
-    if (!v) { v = Math.random().toString(36).slice(2)+Date.now().toString(36); sessionStorage.setItem(k, v); }
-    return v;
-  }
-  function getParams() {
-    const sp = new URLSearchParams(location.search);
-    const g = k => sp.get(k) || undefined;
-    return { utm: { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') },
-              clid: { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') } };
-  }
-  function sendEvent(type, extra = {}) {
-    const payload = { t:type, tenantId:TENANT_ID, siteToken:SITE_TOKEN, url:location.href, ref:document.referrer||null, sid:sid(), ...getParams(), ...extra };
-    const body = JSON.stringify(payload);
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(`${COLLECTOR_BASE}/collect`, new Blob([body], { type: 'text/plain;charset=UTF-8' }));
-      return;
-    }
-    fetch(`${COLLECTOR_BASE}/collect`, {
-      method:'POST',
-      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-      body,
-      keepalive:true
-    }).catch(()=>{});
-  }
-  sendEvent('pageview');
-  // Send product_view event when product detail page loads
-  sendEvent('product_view', {
-    product_id: productId,
-    product_name: productName,
-    product_price: productPrice
-  });
-  (function(){
-    let engaged=false;
-    const markEngaged=()=>{ if(engaged) return; engaged=true; sendEvent('engaged'); };
-    const markBounce =()=>{ if(engaged) return; sendEvent('bounce'); };
-    setTimeout(markEngaged, 30_000);
-    window.addEventListener('scroll', ()=>{ const s=(window.scrollY+window.innerHeight)/(document.documentElement.scrollHeight||1); if(s>=0.75) markEngaged(); }, { passive:true });
-    window.addEventListener('beforeunload', markBounce);
-  })();
-
-  // Get product details from URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const productId = urlParams.get('id') || '1';
-  const productName = urlParams.get('name') || 'Product';
-  const prices = { '1': 29.99, '2': 49.99, '3': 79.99, '4': 99.99, '5': 149.99, '6': 199.99 };
-  const productPrice = prices[productId] || 29.99;
-
-  function handleAddToCart() {
-    // Send add_to_cart event for CVR funnel tracking
-    sendEvent('add_to_cart', {
-      product_id: productId,
-      product_name: productName,
-      product_price: productPrice
-    });
-    alert('Added to cart! (Add to cart event tracked)');
-  }
-
-  function handlePurchase() {
-    sendEvent('conversion', {
-      goal: 'purchase',
-      value: productPrice,
-      product_id: productId,
-      product_name: productName
-    });
-    alert('Purchase completed! (Conversion event tracked)');
-  }
-</script>
-<script>
   (function() {
     var SURVEY_ID = "87f5fc72-c161-4c98-90a7-4b6baa7e50b3";
     var EXP_DAYS = 7;
@@ -130,6 +58,7 @@
     }
   })();
 </script>
+<script src="tracking-snippet.js"></script>
 </head>
 <body>
   <nav class="navbar">

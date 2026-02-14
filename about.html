@@ -5,45 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>About - DMwithAI Demo Store</title>
   <link rel="stylesheet" href="styles.css">
-<script>
-  const COLLECTOR_BASE = "http://localhost:8002";
-  const TENANT_ID = "2";
-  const SITE_TOKEN = "icE56lQxxTWOwTR8dntpNkj-I-Vrxl0-";
-  function sid() {
-    const k = "_our_sid"; let v = sessionStorage.getItem(k);
-    if (!v) { v = Math.random().toString(36).slice(2)+Date.now().toString(36); sessionStorage.setItem(k, v); }
-    return v;
-  }
-  function getParams() {
-    const sp = new URLSearchParams(location.search);
-    const g = k => sp.get(k) || undefined;
-    return { utm: { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') },
-              clid: { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') } };
-  }
-  function sendEvent(type, extra = {}) {
-    const payload = { t:type, tenantId:TENANT_ID, siteToken:SITE_TOKEN, url:location.href, ref:document.referrer||null, sid:sid(), ...getParams(), ...extra };
-    const body = JSON.stringify(payload);
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(`${COLLECTOR_BASE}/collect`, new Blob([body], { type: 'text/plain;charset=UTF-8' }));
-      return;
-    }
-    fetch(`${COLLECTOR_BASE}/collect`, {
-      method:'POST',
-      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-      body,
-      keepalive:true
-    }).catch(()=>{});
-  }
-  sendEvent('pageview');
-  (function(){
-    let engaged=false;
-    const markEngaged=()=>{ if(engaged) return; engaged=true; sendEvent('engaged'); };
-    const markBounce =()=>{ if(engaged) return; sendEvent('bounce'); };
-    setTimeout(markEngaged, 30_000);
-    window.addEventListener('scroll', ()=>{ const s=(window.scrollY+window.innerHeight)/(document.documentElement.scrollHeight||1); if(s>=0.75) markEngaged(); }, { passive:true });
-    window.addEventListener('beforeunload', markBounce);
-  })();
-</script>
+<script src="tracking-snippet.js"></script>
 </head>
 <body>
   <nav class="navbar">
