@@ -1,5 +1,5 @@
 /* === CONFIG (generated) === */
-  const COLLECTOR_BASE = "https://dmwithai.selftrainai.com/api/collector";
+  const COLLECTOR_BASE = "http://localhost:8002";
   const TENANT_ID = "2";
   const SITE_TOKEN = "C23bLSndtg3N_K7EmrOFk_k4LnNGVzkX";
 
