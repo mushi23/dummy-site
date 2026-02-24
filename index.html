@@ -60,6 +60,15 @@
   })();
 </script>
 <script src="tracking-snippet.js"></script>
+<script
+  src="http://localhost:8001/api/ab-runtime.js"
+  data-api-base="http://localhost:8001"
+  data-site-token="C23bLSndtg3N_K7EmrOFk_k4LnNGVzkX"
+  data-experiment-id="1"
+  data-surface="landing_page"
+  data-copy-selector="[data-dmw-copy]"
+  async
+></script>
 </head>
 <body>
   <nav class="navbar">
@@ -76,7 +85,7 @@
 
   <main class="container">
     <section class="hero">
-      <h1>Welcome to DMwithAI Demo Store 22 🚀</h1>
+      <h1 data-dmw-copy>Welcome to DMwithAI Demo Store 22 🚀</h1>
       <p class="subtitle">Testing Cohort Retention & Audience Segmentation</p>
       <p>This is a demo site to test the DMwithAI analytics modules. Navigate through different pages and interact with elements to generate tracking events.</p>
     </section>
