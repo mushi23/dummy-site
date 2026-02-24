@@ -69,6 +69,26 @@
   data-copy-selector="[data-dmw-copy]"
   async
 ></script>
+<style>
+  .ab-hero-media-modal {
+    margin: 12px auto 8px;
+    max-width: 960px;
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.16);
+    transition: opacity 0.45s ease, transform 0.45s ease, max-height 0.45s ease, margin 0.45s ease;
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 520px;
+  }
+  .ab-hero-media-modal.is-hidden {
+    opacity: 0;
+    transform: translateY(-8px);
+    max-height: 0;
+    margin: 0 auto;
+  }
+</style>
 </head>
 <body>
   <nav class="navbar">
@@ -86,12 +106,14 @@
   <main class="container">
     <section class="hero">
       <h1 data-dmw-copy>Welcome to DMwithAI Demo Store 22 🚀</h1>
-      <img
-        data-dmw-image
-        src="https://via.placeholder.com/960x420?text=Default+Hero+Image"
-        alt="Hero visual"
-        style="max-width: 100%; height: auto; border-radius: 12px; margin: 12px 0 8px;"
-      />
+      <div id="ab-hero-media-modal" class="ab-hero-media-modal">
+        <img
+          data-dmw-image
+          src="https://via.placeholder.com/960x420?text=Default+Hero+Image"
+          alt="Hero visual"
+          style="display: block; width: 100%; height: auto;"
+        />
+      </div>
       <p class="subtitle">Testing Cohort Retention & Audience Segmentation</p>
       <p>This is a demo site to test the DMwithAI analytics modules. Navigate through different pages and interact with elements to generate tracking events.</p>
     </section>
@@ -166,5 +188,31 @@
       <p>&copy; 2025 DMwithAI Demo Store. Built for testing analytics modules.</p>
     </div>
   </footer>
+  <script>
+    (function () {
+      function dismissHeroMedia() {
+        var modal = document.getElementById("ab-hero-media-modal");
+        if (!modal || modal.classList.contains("is-hidden")) return;
+        modal.classList.add("is-hidden");
+        setTimeout(function () {
+          if (modal && modal.parentNode) modal.parentNode.removeChild(modal);
+        }, 500);
+      }
+
+      var heroImage = document.querySelector("img[data-dmw-image]");
+      if (!heroImage) return;
+
+      heroImage.addEventListener("error", dismissHeroMedia);
+      heroImage.addEventListener("load", function () {
+        if (!heroImage.naturalWidth || !heroImage.naturalHeight) {
+          dismissHeroMedia();
+        }
+      });
+
+      setTimeout(function () {
+        if (!heroImage.complete || !heroImage.naturalWidth) dismissHeroMedia();
+      }, 2500);
+    })();
+  </script>
 </body>
 </html>
