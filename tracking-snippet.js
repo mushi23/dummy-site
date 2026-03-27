@@ -260,6 +260,7 @@
         '[data-price]',
         '.price',
         '.product-price',
+        '.product-price-large',
         '#price',
         '[class*="price"]'
       ];
