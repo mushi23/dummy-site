@@ -253,6 +253,27 @@
       return el ? el.getAttribute('content') || el.getAttribute('value') || el.textContent : null;
     };
 
+    const extractPriceFromDom = () => {
+      const candidates = [
+        '[itemprop="price"]',
+        'meta[property="product:price:amount"]',
+        '[data-price]',
+        '.price',
+        '.product-price',
+        '#price',
+        '[class*="price"]'
+      ];
+      for (let i = 0; i < candidates.length; i++) {
+        const sel = candidates[i];
+        const el = document.querySelector(sel);
+        if (!el) continue;
+        const raw = el.getAttribute('content') || el.getAttribute('value') || el.getAttribute('data-price') || el.textContent;
+        const parsed = toNumber(raw);
+        if (parsed !== undefined) return parsed;
+      }
+      return undefined;
+    };
+
     const detectProductMeta = () => {
       const urlParams = new URLSearchParams(window.location.search || '');
       const urlProductId = normalize(
@@ -368,6 +389,10 @@
     const sendProductView = (meta, confidence = 0.7) => {
       if (productViewSent) return;
       productViewSent = true;
+      const domPrice = meta.price ?? extractPriceFromDom();
+      if (domPrice !== undefined && (meta.price === undefined || meta.price === null)) {
+        meta.price = domPrice;
+      }
       if (meta.source_hint === 'config_selector') confidence = Math.max(confidence, 0.9);
       if (meta.source_hint === 'json_ld') confidence = Math.max(confidence, 0.85);
       if (meta.source_hint === 'meta') confidence = Math.max(confidence, 0.8);
@@ -461,6 +486,10 @@
       data.category = data.category || meta.category;
       data.price = data.price || meta.price;
       data.currency = meta.currency;
+      const domPrice = data.price ?? extractPriceFromDom();
+      if (domPrice !== undefined && (data.price === undefined || data.price === null)) {
+        data.price = domPrice;
+      }
       if (data.price && data.quantity) {
         data.total = Math.round((data.price * data.quantity + Number.EPSILON) * 100) / 100;
       }
