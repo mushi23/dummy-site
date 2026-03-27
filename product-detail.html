@@ -82,7 +82,7 @@
       </div>
       <div class="product-detail-info">
         <h1 id="product-title">Demo Product</h1>
-        <p class="product-price-large" id="product-price">$<script>document.write(productPrice.toFixed(2))</script></p>
+        <p class="product-price-large" id="product-price">$0.00</p>
         <p class="description">This is a demo product for testing cohort retention and audience segmentation features. Interact with the buttons below to generate conversion events.</p>
         
         <div class="product-actions">
@@ -111,7 +111,48 @@
   </footer>
 
   <script>
-    document.getElementById('product-title').textContent = productName;
+    (function() {
+      const params = new URLSearchParams(window.location.search || '');
+      const productId = params.get('id') || '1';
+      const productName = params.get('name') || `Product ${productId}`;
+      const priceMap = { '1': 29.99, '2': 49.99, '3': 79.99, '4': 39.99 };
+      const productPrice = priceMap[productId] || 19.99;
+
+      const titleEl = document.getElementById('product-title');
+      const priceEl = document.getElementById('product-price');
+      if (titleEl) titleEl.textContent = productName;
+      if (priceEl) priceEl.textContent = `$${productPrice.toFixed(2)}`;
+
+      window.handleAddToCart = function() {
+        if (window.sendAddToCart) {
+          window.sendAddToCart({
+            product_id: productId,
+            name: productName,
+            price: productPrice,
+            currency: 'USD',
+            quantity: 1
+          });
+        }
+      };
+
+      window.handlePurchase = function() {
+        if (window.sendEvent) {
+          window.sendEvent('purchase', {
+            product_id: productId,
+            name: productName,
+            price: productPrice,
+            currency: 'USD',
+            quantity: 1,
+            commerce: {
+              product_id: productId,
+              value: productPrice,
+              currency: 'USD',
+              quantity: 1
+            }
+          });
+        }
+      };
+    })();
   </script>
 </body>
 </html>
