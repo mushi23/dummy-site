@@ -241,16 +241,24 @@
   (function(){
     let productViewSent = false;
     const normalize = (v) => (v || '').toString().trim();
-    const toNumber = (v) => {
+  const toNumber = (v) => {
       if (v === null || v === undefined) return undefined;
       const cleaned = normalize(v).replace(/[^0-9.]/g, '');
       const n = parseFloat(cleaned);
       return Number.isFinite(n) ? n : undefined;
-    };
+  };
 
     const getMeta = (selector) => {
       const el = document.querySelector(selector);
       return el ? el.getAttribute('content') || el.getAttribute('value') || el.textContent : null;
+    };
+
+    const inferCurrency = (raw) => {
+      const s = (raw || '').toString();
+      if (s.includes('€')) return 'EUR';
+      if (s.includes('£')) return 'GBP';
+      if (s.includes('$')) return 'USD';
+      return undefined;
     };
 
     const extractPriceFromDom = () => {
@@ -270,7 +278,12 @@
         if (!el) continue;
         const raw = el.getAttribute('content') || el.getAttribute('value') || el.getAttribute('data-price') || el.textContent;
         const parsed = toNumber(raw);
-        if (parsed !== undefined) return parsed;
+        if (parsed !== undefined) {
+          return {
+            value: parsed,
+            currency: el.getAttribute('data-currency') || inferCurrency(raw)
+          };
+        }
       }
       return undefined;
     };
@@ -317,6 +330,11 @@
             const el = document.querySelector(cfg.selectors.price);
             const val = el ? (el.getAttribute('content') || el.getAttribute('value') || el.textContent) : null;
             if (val) meta.price = toNumber(val);
+          }
+          if (!meta.currency && cfg.selectors.currency) {
+            const el = document.querySelector(cfg.selectors.currency);
+            const val = el ? (el.getAttribute('content') || el.getAttribute('value') || el.textContent) : null;
+            if (val) meta.currency = normalize(val);
           }
         }
       } catch (e) {}
@@ -391,8 +409,9 @@
       if (productViewSent) return;
       productViewSent = true;
       const domPrice = meta.price ?? extractPriceFromDom();
-      if (domPrice !== undefined && (meta.price === undefined || meta.price === null)) {
-        meta.price = domPrice;
+      if (domPrice && (meta.price === undefined || meta.price === null)) {
+        meta.price = domPrice.value;
+        if (!meta.currency && domPrice.currency) meta.currency = domPrice.currency;
       }
       if (meta.source_hint === 'config_selector') confidence = Math.max(confidence, 0.9);
       if (meta.source_hint === 'json_ld') confidence = Math.max(confidence, 0.85);
@@ -488,8 +507,9 @@
       data.price = data.price || meta.price;
       data.currency = meta.currency;
       const domPrice = data.price ?? extractPriceFromDom();
-      if (domPrice !== undefined && (data.price === undefined || data.price === null)) {
-        data.price = domPrice;
+      if (domPrice && (data.price === undefined || data.price === null)) {
+        data.price = domPrice.value;
+        if (!data.currency && domPrice.currency) data.currency = domPrice.currency;
       }
       if (data.price && data.quantity) {
         data.total = Math.round((data.price * data.quantity + Number.EPSILON) * 100) / 100;
