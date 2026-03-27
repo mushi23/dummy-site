@@ -2,7 +2,7 @@
   const COLLECTOR_BASE = "http://localhost:8002";
   const TENANT_ID = "2";
   const SITE_TOKEN = "C23bLSndtg3N_K7EmrOFk_k4LnNGVzkX";
-  const TRACKER_VERSION = "1.0.0";
+  const TRACKER_VERSION = "1.1.0";
   const API_BASE = "http://localhost:8001";
   const SESSION_IDLE_MS = 30 * 60 * 1000;
   const SESSION_MAX_MS = 4 * 60 * 60 * 1000;
@@ -254,13 +254,90 @@
     };
 
     const detectProductMeta = () => {
+      const urlParams = new URLSearchParams(window.location.search || '');
+      const urlProductId = normalize(
+        urlParams.get('product_id') ||
+        urlParams.get('productId') ||
+        urlParams.get('sku') ||
+        urlParams.get('id') ||
+        urlParams.get('variant')
+      );
+      const urlProductName = normalize(urlParams.get('name') || urlParams.get('product') || urlParams.get('title'));
+
       const meta = {
         sku: normalize(getMeta('[itemprop="sku"]')) || normalize(getMeta('meta[property="product:retailer_item_id"]')),
+        product_id: null,
         name: normalize(getMeta('[itemprop="name"]')) || normalize(getMeta('meta[property="og:title"]')) || document.title,
         category: normalize(getMeta('[itemprop="category"]')),
         price: toNumber(getMeta('[itemprop="price"]')) || toNumber(getMeta('meta[property="product:price:amount"]')),
         currency: normalize(getMeta('[itemprop="priceCurrency"]')) || normalize(getMeta('meta[property="product:price:currency"]')),
+        source_hint: null
       };
+
+      // Config-driven selectors (highest confidence)
+      try {
+        const cfg = window.__dmwConfig || {};
+        if (cfg.selectors) {
+          if (cfg.selectors.product_id) {
+            const el = document.querySelector(cfg.selectors.product_id);
+            const val = el ? (el.getAttribute('content') || el.getAttribute('value') || el.textContent) : null;
+            if (val) {
+              meta.product_id = normalize(val);
+              meta.source_hint = 'config_selector';
+            }
+          }
+          if (!meta.sku && cfg.selectors.sku) {
+            const el = document.querySelector(cfg.selectors.sku);
+            const val = el ? (el.getAttribute('content') || el.getAttribute('value') || el.textContent) : null;
+            if (val) meta.sku = normalize(val);
+          }
+          if (!meta.price && cfg.selectors.price) {
+            const el = document.querySelector(cfg.selectors.price);
+            const val = el ? (el.getAttribute('content') || el.getAttribute('value') || el.textContent) : null;
+            if (val) meta.price = toNumber(val);
+          }
+        }
+      } catch (e) {}
+
+      // JSON-LD Product schema
+      try {
+        const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+        for (let i = 0; i < scripts.length; i++) {
+          const raw = scripts[i].textContent || '';
+          if (!raw) continue;
+          const json = JSON.parse(raw);
+          const node = Array.isArray(json) ? json.find(n => n && n['@type'] === 'Product') : json;
+          if (node && node['@type'] === 'Product') {
+            meta.sku = meta.sku || normalize(node.sku || node.mpn || node.productID);
+            meta.product_id = meta.product_id || normalize(node.productID || node.sku || node.mpn);
+            meta.name = meta.name || normalize(node.name);
+            if (!meta.price && node.offers && node.offers.price) {
+              meta.price = toNumber(node.offers.price);
+            }
+            if (!meta.currency && node.offers && node.offers.priceCurrency) {
+              meta.currency = normalize(node.offers.priceCurrency);
+            }
+            if (!meta.source_hint) meta.source_hint = 'json_ld';
+            break;
+          }
+        }
+      } catch (e) {}
+
+      // OpenGraph / meta tags
+      if (!meta.sku) meta.sku = normalize(getMeta('meta[property="product:retailer_item_id"]')) || meta.sku;
+      if (!meta.product_id) meta.product_id = normalize(getMeta('meta[property="product:retailer_item_id"]')) || meta.product_id;
+      if (!meta.source_hint && (meta.product_id || meta.sku)) meta.source_hint = 'meta';
+
+      // URL params fallback
+      if (!meta.product_id && urlProductId) {
+        meta.product_id = urlProductId;
+        meta.source_hint = meta.source_hint || 'url_param';
+      }
+      if (!meta.name && urlProductName) meta.name = urlProductName;
+
+      if (!meta.product_id) {
+        meta.product_id = meta.sku || urlProductId || null;
+      }
       return meta;
     };
 
@@ -291,19 +368,23 @@
     const sendProductView = (meta, confidence = 0.7) => {
       if (productViewSent) return;
       productViewSent = true;
+      if (meta.source_hint === 'config_selector') confidence = Math.max(confidence, 0.9);
+      if (meta.source_hint === 'json_ld') confidence = Math.max(confidence, 0.85);
+      if (meta.source_hint === 'meta') confidence = Math.max(confidence, 0.8);
+      if (meta.source_hint === 'url_param') confidence = Math.max(confidence, 0.7);
       sendEvent('product_view', {
         sku: meta.sku,
-        product_id: meta.sku,
+        product_id: meta.product_id || meta.sku,
         name: meta.name,
         category: meta.category,
         price: meta.price,
         currency: meta.currency,
         commerce: {
-          product_id: meta.sku,
+          product_id: meta.product_id || meta.sku,
           value: meta.price,
           currency: meta.currency
         },
-        data_completeness: meta.sku || meta.price ? 'medium' : 'low'
+        data_completeness: meta.product_id || meta.sku || meta.price ? 'medium' : 'low'
       }, "heuristic", confidence);
     };
 
@@ -372,6 +453,9 @@
         price: toNumber(el.dataset.price),
         quantity: toNumber(el.dataset.quantity) || 1
       };
+      if (!data.product_id) {
+        data.product_id = meta.product_id || meta.sku;
+      }
       data.sku = data.sku || meta.sku;
       data.name = data.name || meta.name;
       data.category = data.category || meta.category;
