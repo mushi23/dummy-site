@@ -2,26 +2,76 @@
   const COLLECTOR_BASE = "http://localhost:8002";
   const TENANT_ID = "2";
   const SITE_TOKEN = "C23bLSndtg3N_K7EmrOFk_k4LnNGVzkX";
+  const TRACKER_VERSION = "1.0.0";
+  const API_BASE = "http://localhost:8001";
+  const SESSION_IDLE_MS = 30 * 60 * 1000;
+  const SESSION_MAX_MS = 4 * 60 * 60 * 1000;
+  const REFERRER_NEW_SESSION = false;
+  const BATCH_FLUSH_MS = 5000;
+  const BATCH_MAX = 10;
 
-  function sid() {
-    // Use localStorage for cross-session persistence (better for returning user detection)
-    // Falls back to sessionStorage if localStorage unavailable
-    const k = "_our_sid";
-    let storage = typeof localStorage !== 'undefined' ? localStorage : sessionStorage;
-    let v = storage.getItem(k);
-    if (!v) {
-      v = Math.random().toString(36).slice(2)+Date.now().toString(36);
-      try {
-        storage.setItem(k, v);
-      } catch(e) {
-        // Fallback to sessionStorage if localStorage fails (e.g., private mode)
-        if (storage !== sessionStorage) {
-          storage = sessionStorage;
-          storage.setItem(k, v);
-        }
-      }
+  function uuid() {
+    return "evt_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+
+  function nowIso() {
+    try {
+      return new Date().toISOString();
+    } catch (e) {
+      return "";
     }
-    return v;
+  }
+
+  function safeJsonParse(raw, fallback) {
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  function getAnonId() {
+    const key = "_dmw_anon_id";
+    try {
+      let v = localStorage.getItem(key);
+      if (!v) {
+        v = "anon_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        localStorage.setItem(key, v);
+      }
+      return v;
+    } catch (e) {
+      return "anon_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    }
+  }
+
+  function getSession() {
+    const key = "_dmw_session";
+    const now = Date.now();
+    const ref = document.referrer || "";
+    let raw = null;
+    try { raw = localStorage.getItem(key); } catch (e) { raw = null; }
+    let data = raw ? safeJsonParse(raw, null) : null;
+    let needsNew = false;
+    if (!data || !data.id || !data.start || !data.last) {
+      needsNew = true;
+    } else {
+      const idle = now - data.last;
+      const age = now - data.start;
+      if (idle > SESSION_IDLE_MS || age > SESSION_MAX_MS) needsNew = true;
+      if (REFERRER_NEW_SESSION && ref && data.ref && ref !== data.ref) needsNew = true;
+    }
+    if (needsNew) {
+      data = {
+        id: "sess_" + Math.random().toString(36).slice(2) + Date.now().toString(36),
+        start: now,
+        last: now,
+        ref: ref
+      };
+    } else {
+      data.last = now;
+    }
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) {}
+    return data.id;
   }
   function getParams() {
     const sp = new URLSearchParams(location.search);
@@ -29,6 +79,7 @@
     return { utm: { source:g('utm_source'), medium:g('utm_medium'), campaign:g('utm_campaign'), term:g('utm_term'), content:g('utm_content') },
               clid: { gclid:g('gclid'), fbclid:g('fbclid'), ttclid:g('ttclid') } };
   }
+
   function getIdentity() {
     const id = window.DMWIdentity || window.dmwIdentity || null;
     if (!id || typeof id !== 'object') return {};
@@ -36,28 +87,142 @@
     return {
       customer_id: pick('customer_id'),
       user_id: pick('user_id'),
-      user_key: pick('user_key'),
-      session_id: pick('session_id'),
-      anonymous_id: pick('anonymous_id'),
-      user_fingerprint: pick('user_fingerprint')
+      user_key: pick('user_key')
     };
   }
-  function sendEvent(type, extra = {}) {
-    const payload = { t:type, tenantId:TENANT_ID, siteToken:SITE_TOKEN, url:location.href, ref:document.referrer||null, sid:sid(), ...getParams(), ...getIdentity(), ...extra };
+
+  function loadConfig() {
+    const cacheKey = `_dmw_funnel_config_${SITE_TOKEN}`;
+    const ttlMs = 60 * 60 * 1000;
+    try {
+      const cachedRaw = localStorage.getItem(cacheKey);
+      if (cachedRaw) {
+        const cached = safeJsonParse(cachedRaw, null);
+        if (cached && cached.config && cached.fetched_at && (Date.now() - cached.fetched_at) < ttlMs) {
+          window.__dmwConfig = cached.config;
+          return;
+        }
+      }
+    } catch (e) {}
+
+    const url = `${API_BASE}/api/track/config?site_token=${encodeURIComponent(SITE_TOKEN)}`;
+    fetch(url, { method: 'GET', credentials: 'omit' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        window.__dmwConfig = data;
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify({ config: data, fetched_at: Date.now() }));
+        } catch (e) {}
+      })
+      .catch(() => {});
+  }
+
+  loadConfig();
+
+  function buildEvent(type, extra = {}, method = "explicit", confidence = 1.0) {
+    const identity = getIdentity();
+    const sessionId = identity.session_id || getSession();
+    const configVersion = (window.__dmwConfig && window.__dmwConfig.config_version) || (window.dmwConfig && window.dmwConfig.config_version) || undefined;
+    return {
+      t: type,
+      event_type: type,
+      event_id: uuid(),
+      event_version: "1.0",
+      event_timestamp: nowIso(),
+      tenantId: TENANT_ID,
+      siteToken: SITE_TOKEN,
+      url: location.href,
+      ref: document.referrer || null,
+      sid: sessionId,
+      anonymous_id: getAnonId(),
+      source: {
+        channel: "js_tracker",
+        method: method,
+        tracker_version: TRACKER_VERSION
+      },
+      source_channel: "js_tracker",
+      source_method: method,
+      tracker_version: TRACKER_VERSION,
+      config_version: configVersion,
+      confidence: confidence,
+      data_completeness: extra && extra.data_completeness ? extra.data_completeness : undefined,
+      ...getParams(),
+      ...identity,
+      ...extra
+    };
+  }
+
+  const queue = [];
+  let flushTimer = null;
+  let retryTimer = null;
+
+  function scheduleFlush() {
+    if (flushTimer) return;
+    flushTimer = setTimeout(() => {
+      flushTimer = null;
+      flushQueue();
+    }, BATCH_FLUSH_MS);
+  }
+
+  function enqueue(event) {
+    queue.push({ event, attempts: 0 });
+    if (queue.length >= BATCH_MAX) {
+      flushQueue();
+      return;
+    }
+    scheduleFlush();
+  }
+
+  function sendSingle(payload, onError) {
     const body = JSON.stringify(payload);
     if (navigator.sendBeacon) {
-      navigator.sendBeacon(`${COLLECTOR_BASE}/collect`, new Blob([body], { type: 'text/plain;charset=UTF-8' }));
-      return;
+      try {
+        navigator.sendBeacon(`${COLLECTOR_BASE}/collect`, new Blob([body], { type: 'text/plain;charset=UTF-8' }));
+        return;
+      } catch (e) {}
     }
     fetch(`${COLLECTOR_BASE}/collect`, {
       method:'POST',
       headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
       body,
       keepalive:true
-    }).catch(()=>{});
+    }).then((res) => {
+      if (!res.ok && onError) onError();
+    }).catch(() => {
+      if (onError) onError();
+    });
   }
-  window.__dmwTrackPageview = (extra = {}) => sendEvent('pageview', { spa: true, ...extra });
-  sendEvent('pageview');
+
+  function scheduleRetry() {
+    if (retryTimer) return;
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      flushQueue();
+    }, 1500);
+  }
+
+  function flushQueue() {
+    if (!queue.length) return;
+    const batch = queue.splice(0, BATCH_MAX);
+    batch.forEach((item) => {
+      sendSingle(item.event, () => {
+        item.attempts += 1;
+        if (item.attempts < 3) {
+          queue.unshift(item);
+          scheduleRetry();
+        }
+      });
+    });
+  }
+
+  function sendEvent(type, extra = {}, method = "explicit", confidence = 1.0) {
+    const payload = buildEvent(type, extra, method, confidence);
+    enqueue(payload);
+  }
+
+  window.__dmwTrackPageview = (extra = {}) => sendEvent('pageview', { spa: true, ...extra }, "explicit", 1.0);
+  sendEvent('pageview', {}, "explicit", 1.0);
   (function(){
     let engaged=false;
     const markEngaged=()=>{ if(engaged) return; engaged=true; sendEvent('engaged'); };
@@ -66,6 +231,11 @@
     window.addEventListener('scroll', ()=>{ const s=(window.scrollY+window.innerHeight)/(document.documentElement.scrollHeight||1); if(s>=0.75) markEngaged(); }, { passive:true });
     window.addEventListener('beforeunload', markBounce);
   })();
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      flushQueue();
+    }
+  });
 
   /* === ECOMMERCE AUTO-DETECTION === */
   (function(){
@@ -94,14 +264,47 @@
       return meta;
     };
 
+    const matchPatternList = (patterns, value) => {
+      if (!patterns || !patterns.length) return false;
+      const hay = (value || '').toString();
+      for (let i = 0; i < patterns.length; i++) {
+        const p = patterns[i];
+        if (!p) continue;
+        if (p.startsWith('/') && p.endsWith('/') && p.length > 2) {
+          try {
+            const re = new RegExp(p.slice(1, -1), 'i');
+            if (re.test(hay)) return true;
+          } catch (e) {}
+        } else if (hay.toLowerCase().includes(p.toLowerCase())) {
+          return true;
+        }
+      }
+      return false;
+    };
+
     const isProductPage = (meta) => {
+      const cfg = window.__dmwConfig || {};
+      if (matchPatternList(cfg.product_url_patterns, location.href || '')) return true;
       return Boolean(meta.sku || meta.price || (meta.name && /product|buy|shop/i.test(meta.name)));
     };
 
-    const sendProductView = (meta) => {
+    const sendProductView = (meta, confidence = 0.7) => {
       if (productViewSent) return;
       productViewSent = true;
-      sendEvent('product_view', meta);
+      sendEvent('product_view', {
+        sku: meta.sku,
+        product_id: meta.sku,
+        name: meta.name,
+        category: meta.category,
+        price: meta.price,
+        currency: meta.currency,
+        commerce: {
+          product_id: meta.sku,
+          value: meta.price,
+          currency: meta.currency
+        },
+        data_completeness: meta.sku || meta.price ? 'medium' : 'low'
+      }, "heuristic", confidence);
     };
 
     // Expose manual helpers
@@ -112,9 +315,41 @@
     try {
       const meta = detectProductMeta();
       if (isProductPage(meta)) {
-        sendProductView(meta);
+        sendProductView(meta, 0.7);
       }
     } catch(e) {}
+
+    // Apply config rules
+    const applyConfigRules = () => {
+      const cfg = window.__dmwConfig || {};
+      const url = location.href || '';
+      if (matchPatternList(cfg.cart_url_patterns, url)) {
+        sendEvent('add_to_cart', { data_completeness: 'low' }, "explicit", 0.85);
+      }
+      if (matchPatternList(cfg.checkout_url_patterns, url)) {
+        sendEvent('begin_checkout', { data_completeness: 'low' }, "explicit", 0.85);
+      }
+      if (cfg.selectors && cfg.selectors.product_view) {
+        const el = document.querySelector(cfg.selectors.product_view);
+        if (el) {
+          sendEvent('product_view', { data_completeness: 'medium' }, "explicit", 0.9);
+        }
+      }
+      if (cfg.selectors && cfg.selectors.add_to_cart) {
+        const el = document.querySelector(cfg.selectors.add_to_cart);
+        if (el) {
+          el.addEventListener('click', () => sendEvent('add_to_cart', { data_completeness: 'low' }, "explicit", 0.9), true);
+        }
+      }
+      if (cfg.selectors && cfg.selectors.begin_checkout) {
+        const el = document.querySelector(cfg.selectors.begin_checkout);
+        if (el) {
+          el.addEventListener('click', () => sendEvent('begin_checkout', { data_completeness: 'low' }, "explicit", 0.9), true);
+        }
+      }
+    };
+
+    applyConfigRules();
 
     // Auto add-to-cart click detection
     const cartKeywords = ['add to cart', 'add-to-cart', 'addtocart', 'add cart', 'add to bag', 'add to basket', 'cart'];
@@ -147,86 +382,15 @@
       }
 
       if (cartKeywords.some(k => combined.includes(k))) {
-        sendEvent('add_to_cart', data);
+        sendEvent('add_to_cart', { ...data, commerce: { product_id: data.sku || data.product_id, value: data.price, currency: data.currency, quantity: data.quantity } }, "heuristic", 0.6);
         return;
       }
       if (checkoutKeywords.some(k => combined.includes(k))) {
-        sendEvent('begin_checkout', data);
+        sendEvent('begin_checkout', { ...data, commerce: { product_id: data.sku || data.product_id, value: data.price, currency: data.currency, quantity: data.quantity } }, "heuristic", 0.6);
         return;
       }
       if (purchaseKeywords.some(k => combined.includes(k))) {
-        sendEvent('purchase', data);
-        sendEvent('conversion', { source: 'purchase', ...data });
+        sendEvent('purchase', { ...data, commerce: { product_id: data.sku || data.product_id, value: data.price, currency: data.currency, quantity: data.quantity } }, "heuristic", 0.6);
       }
     }, true);
-  })();
-  
-  /* === CONVERSION TRACKING === */
-  // Option A: Manual tracking - websites can call sendEvent('conversion', { goal: 'purchase', value: 99.99 })
-  // Option C: Automatic form submission detection
-  (function(){
-    let conversionTracked = false;
-    const trackConversion = (source, metadata = {}) => {
-      if (conversionTracked) return; // Only track one conversion per session
-      conversionTracked = true;
-      sendEvent('conversion', { source: source, ...metadata });
-    };
-    
-    // Make sendEvent available globally for manual tracking (Option A)
-    window.sendConversionEvent = (goal, value) => {
-      trackConversion('manual', { goal: goal || 'conversion', value: value });
-    };
-    
-    // Option C: Automatic form submission detection
-    document.addEventListener('submit', (e) => {
-      const form = e.target;
-      if (!form || form.tagName !== 'FORM') return;
-      
-      // Check if form has data attribute to exclude it
-      if (form.dataset.trackConversion === 'false') return;
-      
-      // Extract form metadata
-      const formId = form.id || form.name || 'unknown';
-      const formAction = form.action || location.href;
-      const formMethod = form.method || 'get';
-      
-      // Check for common conversion form patterns
-      const conversionPatterns = [
-        /signup|register|subscribe|newsletter/i,
-        /contact|inquiry|lead|quote/i,
-        /checkout|purchase|order|buy/i,
-        /download|demo|trial/i,
-        /apply|application/i
-      ];
-      
-      const isConversionForm = 
-        form.dataset.trackConversion === 'true' ||
-        conversionPatterns.some(pattern => 
-          pattern.test(formId) || 
-          pattern.test(formAction) || 
-          pattern.test(form.className)
-        );
-      
-      if (isConversionForm) {
-        // Extract form data for metadata
-        const formData = new FormData(form);
-        const metadata = {
-          goal: form.dataset.conversionGoal || 'form_submission',
-          form_id: formId,
-          form_action: formAction,
-          form_method: formMethod
-        };
-        
-        // Try to extract value if present in form
-        const valueField = form.querySelector('[name*="value"], [name*="amount"], [name*="price"]');
-        if (valueField && valueField.value) {
-          const parsedValue = parseFloat(valueField.value);
-          if (!isNaN(parsedValue)) {
-            metadata.value = parsedValue;
-          }
-        }
-        
-        trackConversion('form_submission', metadata);
-      }
-    }, true); // Use capture phase to catch all form submissions
   })();
