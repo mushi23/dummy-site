@@ -1,6 +1,6 @@
   /* === CONFIG (generated) === */
-  const COLLECTOR_BASE = "https://dmwithai.selftrainai.com/api/collector";
-  const API_BASE = "https://dmwithai.selftrainai.com";
+  const COLLECTOR_BASE = "https://9ed8-41-90-184-191.ngrok-free.app";
+  const API_BASE = "https://9ed8-41-90-184-191.ngrok-free.app";
   const TENANT_ID = "1";
   const SITE_TOKEN = "WKnbscWBo6oqYhBSYhOSoWd4wPf5l_mK";
   const TRACKER_VERSION = "1.1.0";
@@ -101,7 +101,7 @@
       try {
         const res = await fetch(`${COLLECTOR_BASE}/api/track/config?site_token=${SITE_TOKEN}`, {
           method: 'GET',
-          headers: { 'Accept': 'application/json' },
+          headers: { 'Accept': 'application/json', 'ngrok-skip-browser-warning': 'true' },
           credentials: 'omit'
         });
         if (res.ok) {
