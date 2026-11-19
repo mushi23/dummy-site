@@ -99,7 +99,7 @@
         }
       } catch (e) {}
       try {
-        const res = await fetch(`${API_BASE}/api/track/config?site_token=${SITE_TOKEN}`, {
+        const res = await fetch(`${COLLECTOR_BASE}/api/track/config?site_token=${SITE_TOKEN}`, {
           method: 'GET',
           headers: { 'Accept': 'application/json' },
           credentials: 'omit'
