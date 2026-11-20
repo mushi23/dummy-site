@@ -1,8 +1,8 @@
-  /* === CONFIG (generated) === */
-  const COLLECTOR_BASE = "https://9ed8-41-90-184-191.ngrok-free.app";
-  const API_BASE = "https://9ed8-41-90-184-191.ngrok-free.app";
-  const TENANT_ID = "1";
-  const SITE_TOKEN = "WKnbscWBo6oqYhBSYhOSoWd4wPf5l_mK";
+/* === CONFIG (generated) === */
+  const COLLECTOR_BASE = "https://dmwithai.selftrainai.com/api/collector";
+  const API_BASE = "https://dmwithai.selftrainai.com";
+  const TENANT_ID = "416";
+  const SITE_TOKEN = "J0ei3EOmiqVKGEISwx3lK6kK3BDMEq3q";
   const TRACKER_VERSION = "1.1.0";
 
   function sid() {
@@ -99,9 +99,9 @@
         }
       } catch (e) {}
       try {
-        const res = await fetch(`${COLLECTOR_BASE}/api/track/config?site_token=${SITE_TOKEN}`, {
+        const res = await fetch(`${API_BASE}/api/track/config?site_token=${SITE_TOKEN}`, {
           method: 'GET',
-          headers: { 'Accept': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+          headers: { 'Accept': 'application/json' },
           credentials: 'omit'
         });
         if (res.ok) {
@@ -550,4 +550,3 @@
       }
     }, true); // Use capture phase to catch all form submissions
   })();
-

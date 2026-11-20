@@ -80,14 +80,18 @@ Test different acquisition channels using UTM parameters:
 
 ## 🔧 Configuration
 
-The tracking snippet is configured in each HTML file:
-```javascript
-const COLLECTOR_BASE = "https://dmwithai.selftrainai.com/api/collector";
-const TENANT_ID = "2";
-const SITE_TOKEN = "icE56lQxxTWOwTR8dntpNkj-I-Vrxl0-";
-```
+All five HTML pages load the shared `tracking-snippet.js` file. It contains the
+current generated configuration for tenant `416` and sends events to
+`https://dmwithai.selftrainai.com/api/collector/collect`. The script URL includes a
+version query so browsers reload the new configuration.
 
-Update these values if needed for your environment.
+The previous tracker is preserved unchanged in `tracking-snippet.previous-user.js`.
+Its script tag is commented out in every page. Previous-user survey and A/B embeds
+are also commented out in place so they do not run during this user's test.
+
+To test the previous user again, comment out the current tracker tag and uncomment
+the previous-user tracker tag on the pages being tested. Keep only one tracker
+active per page; restore the survey or A/B embeds only for their corresponding test.
 
 ## 📈 Data Requirements
 
